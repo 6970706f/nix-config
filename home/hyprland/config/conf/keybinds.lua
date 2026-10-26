@@ -1,0 +1,77 @@
+-- ####################
+-- ### KEYBINDS
+-- ####################
+
+local vars = require("conf.environment")
+
+-- ── Apps ──────────────────────────────────────────
+hl.bind(vars.mainMod .. " + Q", hl.dsp.exec_cmd(vars.terminal))
+hl.bind(vars.mainMod .. " + E", hl.dsp.exec_cmd(vars.fileManager))
+hl.bind(vars.mainMod .. " + R", hl.dsp.exec_cmd(vars.menu))
+hl.bind(vars.mainMod .. " + C", hl.dsp.exec_cmd(vars.code))
+hl.bind(vars.mainMod .. " + B", hl.dsp.exec_cmd(vars.browser))
+hl.bind(vars.mainMod .. " + D", hl.dsp.exec_cmd(vars.rofi))
+hl.bind(vars.mainMod .. " + P", hl.dsp.exec_cmd(vars.allApps))
+hl.bind(vars.mainMod .. " + F5", hl.dsp.exec_cmd(vars.autoClick))
+
+-- ── Janelas ───────────────────────────────────────
+hl.bind(vars.mainMod .. " + W", hl.dsp.window.close())
+hl.bind(vars.mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
+hl.bind(vars.mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
+hl.bind("ALT + Tab", hl.dsp.window.cycle_next())
+
+-- ── Sistema ───────────────────────────────────────
+hl.bind(vars.mainMod .. " + L", hl.dsp.exec_cmd(vars.lock))
+hl.bind(vars.mainMod .. " + M", hl.dsp.exec_cmd(vars.wallpaper))
+hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(vars.btop))
+hl.bind(vars.mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(vars.print))
+hl.bind(vars.mainMod .. " + SHIFT + D", hl.dsp.exec_cmd(vars.record))
+hl.bind(vars.mainMod .. " + SHIFT + O", hl.dsp.exec_cmd(vars["1080"]))
+hl.bind(vars.mainMod .. " + SHIFT + P", hl.dsp.exec_cmd(vars["1440"]))
+
+-- ── Volume/Microfone (SUPER + setas) ────────────────────────
+hl.bind(vars.mainMod .. " + Up", hl.dsp.exec_cmd(vars.soundUp))
+hl.bind(vars.mainMod .. " + Down", hl.dsp.exec_cmd(vars.soundDown))
+hl.bind(vars.mainMod .. " + Left", hl.dsp.exec_cmd(vars.changeSoundOutput))
+
+hl.bind(vars.mainMod .. " + Delete", hl.dsp.exec_cmd(vars.muteUnmute))
+
+-- ── Teclas de mídia (teclado) ─────────────────────
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, repeating = true })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"), { locked = true, repeating = true })
+
+hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
+hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
+
+-- ── Workspaces ────────────────────────────────────
+hl.bind(vars.mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }))
+hl.bind(vars.mainMod .. " + 2", hl.dsp.focus({ workspace = 2 }))
+hl.bind(vars.mainMod .. " + 3", hl.dsp.focus({ workspace = 3 }))
+hl.bind(vars.mainMod .. " + 4", hl.dsp.focus({ workspace = 4 }))
+hl.bind(vars.mainMod .. " + 5", hl.dsp.focus({ workspace = 5 }))
+hl.bind(vars.mainMod .. " + 6", hl.dsp.focus({ workspace = 6 }))
+hl.bind(vars.mainMod .. " + 7", hl.dsp.focus({ workspace = 7 }))
+hl.bind(vars.mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }))
+hl.bind(vars.mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }))
+hl.bind(vars.mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }))
+
+hl.bind(vars.mainMod .. " + SHIFT + 1", hl.dsp.window.move({ workspace = 1 }))
+hl.bind(vars.mainMod .. " + SHIFT + 2", hl.dsp.window.move({ workspace = 2 }))
+hl.bind(vars.mainMod .. " + SHIFT + 3", hl.dsp.window.move({ workspace = 3 }))
+hl.bind(vars.mainMod .. " + SHIFT + 4", hl.dsp.window.move({ workspace = 4 }))
+hl.bind(vars.mainMod .. " + SHIFT + 5", hl.dsp.window.move({ workspace = 5 }))
+hl.bind(vars.mainMod .. " + SHIFT + 6", hl.dsp.window.move({ workspace = 6 }))
+hl.bind(vars.mainMod .. " + SHIFT + 7", hl.dsp.window.move({ workspace = 7 }))
+hl.bind(vars.mainMod .. " + SHIFT + 8", hl.dsp.window.move({ workspace = 8 }))
+hl.bind(vars.mainMod .. " + SHIFT + 9", hl.dsp.window.move({ workspace = 9 }))
+hl.bind(vars.mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
+
+-- ── Mouse ─────────────────────────────────────────
+hl.bind(vars.mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
+hl.bind(vars.mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })

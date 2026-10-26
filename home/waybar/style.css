@@ -1,0 +1,93 @@
+@define-color bg #000000;
+@define-color fg #ffffff;
+
+* {
+  font-family: "JetBrains Mono Nerd", monospace;
+  border: none;
+  min-height: 0;
+  font-weight: bold;
+}
+
+window#waybar {
+  background-color: @bg;
+  border-radius: 0;
+  color: @fg;
+  padding: 2px 12px;
+  transition: 0.3s all;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  padding: 0 1rem;
+  color: @fg;
+  border: none;
+}
+
+.modules-center {
+  padding: 2px;
+}
+
+#custom-icon {
+  font-size: 15px;
+  padding-right: 5px;
+}
+
+#window {
+  font-weight: bold;
+  color: @fg;
+  transition: all 0.3s ease;
+}
+
+#workspaces {
+  font-weight: bold;
+  font-size: 12px;
+  border: none;
+}
+
+#workspaces button {
+  color: @fg;
+  border-radius: 0;
+  transition: 0.2s ease-out;
+  border-bottom: 1px solid transparent;
+}
+
+#workspaces button.urgent {
+  border-bottom: 1px solid @fg;
+}
+
+#workspaces button.active {
+  border-bottom: 1px solid @fg;
+  color: @fg;
+}
+
+#tray {
+  color: @fg;
+}
+
+#clock {
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+#clock:hover {
+  color: @fg;
+}
+
+#pulseaudio {
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+#pulseaudio:hover {
+  color: @fg;
+}
+
+#custom-recorder.recording {
+  color: @fg;
+  font-size: 10px;
+}
+
+#network {
+  padding: 0 3px;
+}
