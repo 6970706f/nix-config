@@ -74,9 +74,5 @@
       source = ./config/scripts/mute.sh;
       executable = true;
     };
-    "hypr/scripts/songdetail.sh" = {
-      source = ./config/scripts/songdetail.sh;
-      executable = true;
-    };
   };
 }

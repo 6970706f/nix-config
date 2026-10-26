@@ -44,12 +44,16 @@
     binfmt = true;
   };
 
+  virtualisation.libvirtd.enable = true;
+
   programs.steam.enable = true;
-  programs.ydotool.enable = true;  
+  programs.ydotool.enable = true;
+  programs.virt-manager.enable = true;
 
   services.flatpak.enable = true;
   services.gnome.gnome-keyring.enable = true;
   services.dunst.enable = true;
+  services.openssh.enable = true;
 
   # Shell
   programs.zsh.enable = true;
@@ -63,6 +67,7 @@
       "networkmanager"
       "wheel"
       "ydotool"
+      "libvirtd"
     ];
 
     shell = pkgs.zsh;

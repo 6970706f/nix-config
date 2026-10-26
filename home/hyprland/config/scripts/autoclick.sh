@@ -9,6 +9,7 @@ if [[ -f "$PIDFILE" ]]; then
         pkill -TERM -P "$PID" 2>/dev/null || true
         kill -TERM "$PID" 2>/dev/null || true
         rm -f "$PIDFILE"
+        notify-send "⏹ autoclick" "autoclick disabled"
         exit 0
     fi
 
@@ -18,6 +19,9 @@ fi
 echo "$$" > "$PIDFILE"
 trap 'rm -f "$PIDFILE"' EXIT
 
+notify-send "⏺ autoclick" "autoclick enabled"
+
 while true; do
     ydotool click 0xC0
 done
+

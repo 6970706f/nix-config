@@ -1,4 +1,3 @@
-
 { ... }:
 
 {
@@ -13,6 +12,10 @@
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos#nixos";
       update = "nix flake update --flake /etc/nixos";
     };
+
+    initContent = ''
+      path+=( "$HOME/.config/hypr/scripts" )
+    '';
 
     history = {
       size = 10000;

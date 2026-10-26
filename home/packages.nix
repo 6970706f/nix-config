@@ -56,5 +56,6 @@
     glib
     hypridle
     dunst
+    openssh
   ];
 }
