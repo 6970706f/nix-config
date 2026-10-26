@@ -1,4 +1,4 @@
-{ ... }:
+{ config, ... }:
 
 {
   programs.zsh = {
@@ -10,12 +10,9 @@
 
     shellAliases = {
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos#nixos";
-      update = "nix flake update --flake /etc/nixos";
+      upgrade = "nix flake update --flake /etc/nixos";
+      update = "${config.home.homeDirectory}/.config/hypr/scripts/nixos-update";
     };
-
-    initContent = ''
-      path+=( "$HOME/.config/hypr/scripts" )
-    '';
 
     history = {
       size = 10000;
