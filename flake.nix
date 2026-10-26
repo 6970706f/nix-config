@@ -5,7 +5,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-    spotifast.url = "github:crmne/spotifast";
+    spotifast.url = "github:crmne/spotifast/v0.14.2";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
