@@ -7,7 +7,7 @@
     ./home/rofi
     ./home/zsh
     ./home/packages.nix
-    ./home/kitty.nix
+    ./home/kitty
   ];
 
   home.username = "user";
