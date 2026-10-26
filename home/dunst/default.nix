@@ -8,7 +8,7 @@
       global = {
         monitor = 0;
         follow = "mouse";
-        origin = "top-right";
+        origin = "bottom-right";
         offset = "20x20";
         width = "(260, 340)";
         height = "(0, 140)";

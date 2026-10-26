@@ -117,7 +117,7 @@
           format-ethernet = "󰈀";
           format-disconnected = "󰖪";
           tooltip-format = "{ipAddr} — {signalStrength}%";
-          on-click = "iwgtk";
+          on-click = "kitty -e nmtui";
         };
       };
     };
@@ -125,7 +125,7 @@
 
   # Programs launched by Waybar's click actions.
   home.packages = with pkgs; [
-    iwgtk
     pavucontrol
   ];
 }
+
