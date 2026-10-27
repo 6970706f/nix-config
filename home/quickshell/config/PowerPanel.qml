@@ -191,7 +191,7 @@ PopupWindow {
         Column {
             id: contentColumn
             anchors.fill: parent
-            anchors.margins: 12
+            anchors.margins: 14
             spacing: 7
 
             Item {

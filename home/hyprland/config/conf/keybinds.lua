@@ -15,8 +15,6 @@ local canPollKeyState = type(hl.is_key_down) == "function"
 
 local function bindSuper(keys, dispatcher, options)
     if not canPollKeyState then
-        -- Nas versões mais antigas, o bind de soltura é o caminho compatível;
-        -- não adiciona wrappers nem estado persistente aos atalhos existentes.
         return hl.bind(keys, dispatcher, options)
     end
 

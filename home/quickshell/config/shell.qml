@@ -13,7 +13,12 @@ Scope {
     readonly property color foregroundColor: "#ffffff"
     readonly property string fontFamily: "JetBrainsMono Nerd Font"
 
-    property string activeWindowClass: ""
+    // Barra: escala única para altura, margens e separação entre grupos.
+    readonly property int barHeight: 28
+    readonly property int barEdgeMargin: 24
+    readonly property int barModuleSpacing: 16
+    readonly property int barGroupSpacing: 12
+
     property string networkIcon: "󰖪"
     property bool recording: false
     property var appLauncherInstances: []
@@ -30,10 +35,6 @@ Scope {
         "9": "IX",
         "10": "X"
     })
-
-    function rewriteClass(value) {
-        return value === "vesktop" ? "discord" : value;
-    }
 
     function registerAppLauncher(instance) {
         const instances = root.appLauncherInstances.slice();
@@ -75,47 +76,6 @@ Scope {
     // O áudio e o microfone usam os nós padrão atuais do PipeWire.
     PwObjectTracker {
         objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource]
-    }
-
-    Process {
-        id: activeWindowProcess
-        command: ["hyprctl", "activewindow", "-j"]
-        running: true
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const activeWindow = JSON.parse(this.text);
-                    root.activeWindowClass = activeWindow && activeWindow.class
-                        ? root.rewriteClass(activeWindow.class)
-                        : "";
-                } catch (error) {
-                    root.activeWindowClass = "";
-                }
-            }
-        }
-    }
-
-    Connections {
-        target: Hyprland
-
-        function onRawEvent(event) {
-            if (event.name === "activewindow" || event.name === "activewindowv2") {
-                if (!activeWindowProcess.running)
-                    activeWindowProcess.running = true;
-            }
-        }
-    }
-
-    // Fallback periódico para recuperar o estado caso um evento seja perdido.
-    Timer {
-        interval: 2000
-        running: true
-        repeat: true
-        onTriggered: {
-            if (!activeWindowProcess.running)
-                activeWindowProcess.running = true;
-        }
     }
 
     // Mantém o estado de rede compatível com o que a Waybar exibia.
@@ -208,7 +168,7 @@ Scope {
                 right: true
             }
 
-            implicitHeight: 26
+            implicitHeight: root.barHeight
             exclusiveZone: implicitHeight
             color: root.backgroundColor
 
@@ -219,13 +179,13 @@ Scope {
                 right: 0
             }
 
-            // Região esquerda: ícone NixOS e classe da janela focada.
+            // Região esquerda: lançador do NixOS.
             Row {
                 id: leftModules
                 anchors.left: parent.left
-                anchors.leftMargin: 28
+                anchors.leftMargin: root.barEdgeMargin
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 20
+                spacing: root.barModuleSpacing
 
                 Item {
                     width: nixIcon.implicitWidth + 5
@@ -269,7 +229,7 @@ Scope {
             Row {
                 id: workspaceModules
                 anchors.centerIn: parent
-                spacing: 0
+                spacing: 2
 
                 Repeater {
                     model: Hyprland.workspaces
@@ -285,8 +245,8 @@ Scope {
                             && targetMonitor !== null
                             && modelData.monitor.name === targetMonitor.name
                             && (modelData.active || modelData.urgent || modelData.toplevels.values.length > 0)
-                        width: visible ? workspaceLabel.implicitWidth + 10 : 0
-                        height: 22
+                        width: visible ? workspaceLabel.implicitWidth + 12 : 0
+                        height: 24
 
                         Text {
                             id: workspaceLabel
@@ -320,185 +280,367 @@ Scope {
                 }
             }
 
-            // Região direita: gravação, microfone, métricas CPU/RAM, Bluetooth, rede, áudio, relógio e energia.
+            // Região direita dividida por função: estado, recursos, conectividade e controles.
             Row {
                 id: rightModules
                 anchors.right: parent.right
-                anchors.rightMargin: 28
+                anchors.rightMargin: root.barEdgeMargin
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 20
+                spacing: root.barGroupSpacing
 
-                Text {
+                Row {
+                    id: statusModules
+                    spacing: 8
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: 0
+                        text: "󰝥"
+                        visible: root.recording
+                        color: root.foregroundColor
+                        font.family: root.fontFamily
+                        font.pixelSize: 10
+                        font.bold: true
+                    }
+
+                    Item {
+                        width: microphoneLabel.implicitWidth
+                        height: 22
+
+                        visible: Pipewire.defaultAudioSource !== null
+                            && Pipewire.defaultAudioSource.audio !== null
+                            && Pipewire.defaultAudioSource.audio.muted
+
+                        Text {
+                            id: microphoneLabel
+                            anchors.centerIn: parent
+                            text: "󰍭"
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+                    }
+                }
+
+                Row {
+                    id: resourceModules
+                    spacing: 10
+
+                    Item {
+                        id: cpuModule
+                        width: cpuLabel.implicitWidth + 6
+                        height: 22
+
+                        Text {
+                            id: cpuLabel
+                            anchors.centerIn: parent
+                            text: "󰻠 " + systemMonitorPanel.cpuUsage + "%"
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (networkPanel.visible)
+                                    networkPanel.closePanel();
+                                if (soundPanel.visible)
+                                    soundPanel.closePanel();
+                                if (calendarPanel.visible)
+                                    calendarPanel.closePanel();
+                                if (bluetoothPanel.visible)
+                                    bluetoothPanel.closePanel();
+                                if (appLauncher.visible)
+                                    appLauncher.closePanel();
+                                if (powerPanel.visible)
+                                    powerPanel.closePanel();
+                                systemMonitorPanel.anchorItem = cpuModule;
+                                systemMonitorPanel.togglePanel("cpu");
+                            }
+                        }
+                    }
+
+                    Item {
+                        id: memoryModule
+                        width: memoryLabel.implicitWidth + 6
+                        height: 22
+
+                        Text {
+                            id: memoryLabel
+                            anchors.centerIn: parent
+                            text: "󰍛 " + systemMonitorPanel.memoryUsage + "%"
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (networkPanel.visible)
+                                    networkPanel.closePanel();
+                                if (soundPanel.visible)
+                                    soundPanel.closePanel();
+                                if (calendarPanel.visible)
+                                    calendarPanel.closePanel();
+                                if (bluetoothPanel.visible)
+                                    bluetoothPanel.closePanel();
+                                if (appLauncher.visible)
+                                    appLauncher.closePanel();
+                                if (powerPanel.visible)
+                                    powerPanel.closePanel();
+                                systemMonitorPanel.anchorItem = memoryModule;
+                                systemMonitorPanel.togglePanel("memory");
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 1
+                    height: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.verticalCenterOffset: 0
-                    text: "󰝥"
-                    visible: root.recording
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    font.bold: true
+                    color: "#303030"
                 }
 
-                Item {
-                    width: microphoneLabel.implicitWidth
-                    height: 22
+                Row {
+                    id: connectivityModules
+                    spacing: 10
 
-                    visible: Pipewire.defaultAudioSource !== null
-                        && Pipewire.defaultAudioSource.audio !== null
-                        && Pipewire.defaultAudioSource.audio.muted
+                    Item {
+                        id: bluetoothModule
+                        width: bluetoothLabel.implicitWidth + 6
+                        height: 22
 
-                    Text {
-                        id: microphoneLabel
-                        anchors.centerIn: parent
-                        text: "󰍭"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
+                        Text {
+                            id: bluetoothLabel
+                            anchors.centerIn: parent
+                            text: !Bluetooth.defaultAdapter
+                                ? "󰂲"
+                                : (Bluetooth.defaultAdapter.enabled ? "󰂯" : "󰂲")
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            cursorShape: Qt.PointingHandCursor
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton
+                            onClicked: {
+                                if (networkPanel.visible)
+                                    networkPanel.closePanel();
+                                if (soundPanel.visible)
+                                    soundPanel.closePanel();
+                                if (calendarPanel.visible)
+                                    calendarPanel.closePanel();
+                                if (systemMonitorPanel.visible)
+                                    systemMonitorPanel.closePanel();
+                                if (appLauncher.visible)
+                                    appLauncher.closePanel();
+                                if (powerPanel.visible)
+                                    powerPanel.closePanel();
+                                bluetoothPanel.togglePanel();
+                            }
+                        }
                     }
-                }
 
-                Item {
-                    id: cpuModule
-                    width: cpuLabel.implicitWidth + 6
-                    height: 22
+                    Item {
+                        id: networkModule
+                        width: networkLabel.implicitWidth + 6
+                        height: 22
 
-                    Text {
-                        id: cpuLabel
-                        anchors.centerIn: parent
-                        text: "󰻠 " + systemMonitorPanel.cpuUsage + "%"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
+                        Text {
+                            id: networkLabel
+                            anchors.centerIn: parent
+                            text: root.networkIcon
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (networkPanel.visible)
-                                networkPanel.closePanel();
-                            if (soundPanel.visible)
-                                soundPanel.closePanel();
-                            if (calendarPanel.visible)
-                                calendarPanel.closePanel();
-                            if (bluetoothPanel.visible)
-                                bluetoothPanel.closePanel();
-                            if (appLauncher.visible)
-                                appLauncher.closePanel();
-                            if (powerPanel.visible)
-                                powerPanel.closePanel();
-                            systemMonitorPanel.anchorItem = cpuModule;
-                            systemMonitorPanel.togglePanel("cpu");
+                        MouseArea {
+                            cursorShape: Qt.PointingHandCursor
+                            id: networkMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: {
+                                if (mouse.button === Qt.LeftButton) {
+                                    if (soundPanel.visible)
+                                        soundPanel.closePanel();
+                                    if (calendarPanel.visible)
+                                        calendarPanel.closePanel();
+                                    if (bluetoothPanel.visible)
+                                        bluetoothPanel.closePanel();
+                                    if (systemMonitorPanel.visible)
+                                        systemMonitorPanel.closePanel();
+                                    if (appLauncher.visible)
+                                        appLauncher.closePanel();
+                                    if (powerPanel.visible)
+                                        powerPanel.closePanel();
+                                    networkPanel.togglePanel();
+                                }
+                            }
                         }
                     }
                 }
 
-                Item {
-                    id: memoryModule
-                    width: memoryLabel.implicitWidth + 6
-                    height: 22
-
-                    Text {
-                        id: memoryLabel
-                        anchors.centerIn: parent
-                        text: "󰍛 " + systemMonitorPanel.memoryUsage + "%"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (networkPanel.visible)
-                                networkPanel.closePanel();
-                            if (soundPanel.visible)
-                                soundPanel.closePanel();
-                            if (calendarPanel.visible)
-                                calendarPanel.closePanel();
-                            if (bluetoothPanel.visible)
-                                bluetoothPanel.closePanel();
-                            if (appLauncher.visible)
-                                appLauncher.closePanel();
-                            if (powerPanel.visible)
-                                powerPanel.closePanel();
-                            systemMonitorPanel.anchorItem = memoryModule;
-                            systemMonitorPanel.togglePanel("memory");
-                        }
-                    }
+                Rectangle {
+                    width: 1
+                    height: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: "#303030"
                 }
 
-                Item {
-                    id: bluetoothModule
-                    width: bluetoothLabel.implicitWidth + 6
-                    height: 22
+                Row {
+                    id: controlModules
+                    spacing: 12
 
-                    Text {
-                        id: bluetoothLabel
-                        anchors.centerIn: parent
-                        text: !Bluetooth.defaultAdapter
-                            ? "󰂲"
-                            : (Bluetooth.defaultAdapter.enabled ? "󰂯" : "󰂲")
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
+                    Item {
+                        id: audioModule
+                        width: audioLabel.implicitWidth
+                        height: 22
 
-                    MouseArea {
-                        cursorShape: Qt.PointingHandCursor
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton
-                        onClicked: {
-                            if (networkPanel.visible)
-                                networkPanel.closePanel();
-                            if (soundPanel.visible)
-                                soundPanel.closePanel();
-                            if (calendarPanel.visible)
-                                calendarPanel.closePanel();
-                            if (systemMonitorPanel.visible)
-                                systemMonitorPanel.closePanel();
-                            if (appLauncher.visible)
-                                appLauncher.closePanel();
-                            if (powerPanel.visible)
-                                powerPanel.closePanel();
-                            bluetoothPanel.togglePanel();
+                        Text {
+                            id: audioLabel
+                            anchors.centerIn: parent
+                            text: {
+                                const sink = Pipewire.defaultAudioSink;
+                                if (!sink || !sink.audio)
+                                    return "  --%";
+                                if (sink.audio.muted)
+                                    return " ";
+                                return "  " + Math.round(sink.audio.volume * 100) + "%";
+                            }
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+
+                            onClicked: {
+                                const sink = Pipewire.defaultAudioSink;
+                                if (mouse.button === Qt.LeftButton) {
+                                    if (networkPanel.visible)
+                                        networkPanel.closePanel();
+                                    if (calendarPanel.visible)
+                                        calendarPanel.closePanel();
+                                    if (bluetoothPanel.visible)
+                                        bluetoothPanel.closePanel();
+                                    if (systemMonitorPanel.visible)
+                                        systemMonitorPanel.closePanel();
+                                    if (appLauncher.visible)
+                                        appLauncher.closePanel();
+                                    if (powerPanel.visible)
+                                        powerPanel.closePanel();
+                                    soundPanel.togglePanel();
+                                } else if ((mouse.button === Qt.RightButton
+                                            || mouse.button === Qt.MiddleButton) && sink && sink.audio) {
+                                    sink.audio.muted = !sink.audio.muted;
+                                }
+                            }
+
+                            onWheel: {
+                                const sink = Pipewire.defaultAudioSink;
+                                if (!sink || !sink.audio)
+                                    return;
+
+                                const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
+                                sink.audio.volume = Math.max(0, sink.audio.volume + step);
+                                wheel.accepted = true;
+                            }
                         }
                     }
-                }
 
-                Item {
-                    id: networkModule
-                    width: networkLabel.implicitWidth + 6
-                    height: 22
+                    Item {
+                        id: clockModule
+                        width: clockLabel.implicitWidth
+                        height: 22
 
-                    Text {
-                        id: networkLabel
-                        anchors.centerIn: parent
-                        text: root.networkIcon
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
+                        Text {
+                            id: clockLabel
+                            anchors.centerIn: parent
+                            text: "󰥔 " + Qt.formatDateTime(systemClock.date, "HH:mm")
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            id: clockMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            acceptedButtons: Qt.LeftButton
+                            onClicked: {
+                                if (networkPanel.visible)
+                                    networkPanel.closePanel();
+                                if (soundPanel.visible)
+                                    soundPanel.closePanel();
+                                if (bluetoothPanel.visible)
+                                    bluetoothPanel.closePanel();
+                                if (systemMonitorPanel.visible)
+                                    systemMonitorPanel.closePanel();
+                                if (appLauncher.visible)
+                                    appLauncher.closePanel();
+                                if (powerPanel.visible)
+                                    powerPanel.closePanel();
+                                calendarPanel.togglePanel();
+                            }
+                        }
                     }
 
-                    MouseArea {
-                        cursorShape: Qt.PointingHandCursor
-                        id: networkMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: {
-                            if (mouse.button === Qt.LeftButton) {
+                    Rectangle {
+                        width: 1
+                        height: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: "#303030"
+                    }
+
+                    Item {
+                        id: powerModule
+                        width: powerLabel.implicitWidth + 6
+                        height: 22
+
+                        Text {
+                            id: powerLabel
+                            anchors.centerIn: parent
+                            text: "󰐥"
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            acceptedButtons: Qt.LeftButton
+                            onClicked: {
+                                if (networkPanel.visible)
+                                    networkPanel.closePanel();
                                 if (soundPanel.visible)
                                     soundPanel.closePanel();
                                 if (calendarPanel.visible)
@@ -509,149 +651,8 @@ Scope {
                                     systemMonitorPanel.closePanel();
                                 if (appLauncher.visible)
                                     appLauncher.closePanel();
-                                if (powerPanel.visible)
-                                    powerPanel.closePanel();
-                                networkPanel.togglePanel();
+                                powerPanel.togglePanel();
                             }
-                        }
-                    }
-                }
-
-                Item {
-                    id: audioModule
-                    width: audioLabel.implicitWidth
-                    height: 22
-
-                    Text {
-                        id: audioLabel
-                        anchors.centerIn: parent
-                        text: {
-                            const sink = Pipewire.defaultAudioSink;
-                            if (!sink || !sink.audio)
-                                return "  --%";
-                            if (sink.audio.muted)
-                                return " ";
-                            return "  " + Math.round(sink.audio.volume * 100) + "%";
-                        }
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-
-                        onClicked: {
-                            const sink = Pipewire.defaultAudioSink;
-                            if (mouse.button === Qt.LeftButton) {
-                                if (networkPanel.visible)
-                                    networkPanel.closePanel();
-                                if (calendarPanel.visible)
-                                    calendarPanel.closePanel();
-                                if (bluetoothPanel.visible)
-                                    bluetoothPanel.closePanel();
-                                if (systemMonitorPanel.visible)
-                                    systemMonitorPanel.closePanel();
-                                if (appLauncher.visible)
-                                    appLauncher.closePanel();
-                                if (powerPanel.visible)
-                                    powerPanel.closePanel();
-                                soundPanel.togglePanel();
-                            } else if ((mouse.button === Qt.RightButton
-                                        || mouse.button === Qt.MiddleButton) && sink && sink.audio) {
-                                sink.audio.muted = !sink.audio.muted;
-                            }
-                        }
-
-                        onWheel: {
-                            const sink = Pipewire.defaultAudioSink;
-                            if (!sink || !sink.audio)
-                                return;
-
-                            const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
-                            sink.audio.volume = Math.max(0, sink.audio.volume + step);
-                            wheel.accepted = true;
-                        }
-                    }
-                }
-
-                Item {
-                    id: clockModule
-                    width: clockLabel.implicitWidth
-                    height: 22
-
-                    Text {
-                        id: clockLabel
-                        anchors.centerIn: parent
-                        text: Qt.formatDateTime(systemClock.date, "HH:mm")
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        id: clockMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton
-                        onClicked: {
-                            if (networkPanel.visible)
-                                networkPanel.closePanel();
-                            if (soundPanel.visible)
-                                soundPanel.closePanel();
-                            if (bluetoothPanel.visible)
-                                bluetoothPanel.closePanel();
-                            if (systemMonitorPanel.visible)
-                                systemMonitorPanel.closePanel();
-                            if (appLauncher.visible)
-                                appLauncher.closePanel();
-                            if (powerPanel.visible)
-                                powerPanel.closePanel();
-                            calendarPanel.togglePanel();
-                        }
-                    }
-                }
-
-                Item {
-                    id: powerModule
-                    width: powerLabel.implicitWidth + 6
-                    height: 22
-
-                    Text {
-                        id: powerLabel
-                        anchors.centerIn: parent
-                        text: "󰐥"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton
-                        onClicked: {
-                            if (networkPanel.visible)
-                                networkPanel.closePanel();
-                            if (soundPanel.visible)
-                                soundPanel.closePanel();
-                            if (calendarPanel.visible)
-                                calendarPanel.closePanel();
-                            if (bluetoothPanel.visible)
-                                bluetoothPanel.closePanel();
-                            if (systemMonitorPanel.visible)
-                                systemMonitorPanel.closePanel();
-                            if (appLauncher.visible)
-                                appLauncher.closePanel();
-                            powerPanel.togglePanel();
                         }
                     }
                 }
