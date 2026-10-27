@@ -11,7 +11,6 @@
     shellAliases = {
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos#nixos";
       upgrade = "nix flake update --flake /etc/nixos";
-      update = "${config.home.homeDirectory}/.config/hypr/scripts/nixosupdate.sh";
     };
 
     history = {

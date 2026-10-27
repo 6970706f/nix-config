@@ -74,9 +74,5 @@
       source = ./config/scripts/mute.sh;
       executable = true;
     };
-    "hypr/scripts/nixosupdate.sh" = {
-      source = ./config/scripts/nixosupdate.sh;
-      executable = true;
-    };
   };
 }
