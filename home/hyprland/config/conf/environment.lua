@@ -41,17 +41,12 @@ local variables = {
     btop = terminal .. " -e btop",
     print = "~/.config/hypr/scripts/print.sh",
     record = "~/.config/hypr/scripts/record.sh",
-    clipboard = "cliphist list | rofi -dmenu | cliphist decode | wl-copy",
     muteUnmute = "~/.config/hypr/scripts/mute.sh",
 
     -- ── Volume (SUPER + setas) ────────────────────────
     soundUp = "pactl set-sink-volume @DEFAULT_SINK@ +5%",
     soundDown = "pactl set-sink-volume @DEFAULT_SINK@ -5%",
     changeSoundOutput = "~/.config/hypr/scripts/toggleaudio.sh",
-
-    -- ── Rofi ──────────────────────────────────────────
-    rofi = "~/.config/hypr/scripts/rofi-menu.sh",
-    menu = "rofi -show drun",
 }
 
 return variables

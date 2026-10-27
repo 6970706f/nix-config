@@ -4,35 +4,146 @@
 
 local vars = require("conf.environment")
 
+-- AppLauncher: observa o pressionamento físico de Super e espera pela soltura.
+-- Isso evita depender de bind de soltura de modificador, que falha em algumas
+-- versões do Hyprland 0.56.x. As combinações Super existentes marcam o gesto
+-- como usado, então o launcher não abre depois de Super+1/E/Q etc.
+local appLauncherComboUsed = false
+local appLauncherTapGeneration = 0
+local appLauncherTapTimer = nil
+local canPollKeyState = type(hl.is_key_down) == "function"
+
+local function bindSuper(keys, dispatcher, options)
+    if not canPollKeyState then
+        -- Nas versões mais antigas, o bind de soltura é o caminho compatível;
+        -- não adiciona wrappers nem estado persistente aos atalhos existentes.
+        return hl.bind(keys, dispatcher, options)
+    end
+
+    return hl.bind(keys, function()
+        appLauncherComboUsed = true
+        hl.dispatch(dispatcher)
+    end, options)
+end
+
+local function toggleAppLauncher()
+    hl.dispatch(hl.dsp.exec_cmd("qs ipc call appLauncher toggle"))
+end
+
+if canPollKeyState then
+    -- A detecção por estado também cancela combinações que ainda não têm um
+    -- atalho próprio. Os atalhos já definidos continuam usando bindSuper abaixo.
+    local watchedKeysyms = {}
+    for key in string.gmatch("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", ".") do
+        table.insert(watchedKeysyms, key)
+    end
+    for index = 1, 35 do
+        table.insert(watchedKeysyms, "F" .. index)
+    end
+    for index = 0, 9 do
+        table.insert(watchedKeysyms, "KP_" .. index)
+    end
+    for _, key in ipairs({
+        "Escape", "Tab", "space", "Return", "BackSpace", "Delete", "Insert",
+        "Home", "End", "Page_Up", "Page_Down", "Left", "Right", "Up", "Down",
+        "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R",
+        "Meta_L", "Meta_R", "Caps_Lock", "Num_Lock", "Scroll_Lock", "Print",
+        "Pause", "Menu", "Help", "comma", "period", "slash", "semicolon",
+        "apostrophe", "bracketleft", "bracketright", "backslash", "grave", "minus",
+        "equal", "plus", "less", "greater", "question", "quotedbl", "braceleft",
+        "braceright", "bar", "colon", "underscore", "asciitilde", "exclam", "at",
+        "numbersign", "dollar", "percent", "asciicircum", "ampersand", "asterisk",
+        "parenleft", "parenright", "KP_Enter", "KP_Add", "KP_Subtract", "KP_Multiply",
+        "KP_Divide", "KP_Decimal", "ISO_Level3_Shift", "Mode_switch",
+        "XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute",
+        "XF86AudioMicMute", "XF86AudioNext", "XF86AudioPrev", "XF86AudioPlay",
+        "XF86AudioPause", "XF86MonBrightnessUp", "XF86MonBrightnessDown",
+    }) do
+        table.insert(watchedKeysyms, key)
+    end
+
+    local function anyNonSuperKeyDown()
+        for _, key in ipairs(watchedKeysyms) do
+            local ok, isDown = pcall(hl.is_key_down, key)
+            if ok and isDown then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function beginSuperTap()
+        appLauncherTapGeneration = appLauncherTapGeneration + 1
+        local generation = appLauncherTapGeneration
+        appLauncherComboUsed = false
+
+        local function waitForSuperRelease()
+            if generation ~= appLauncherTapGeneration then
+                return
+            end
+
+            if anyNonSuperKeyDown() then
+                appLauncherComboUsed = true
+            end
+
+            if hl.is_key_down("Super_L") or hl.is_key_down("Super_R") then
+                appLauncherTapTimer = hl.timer(waitForSuperRelease, {
+                    timeout = 10,
+                    type = "oneshot",
+                })
+                return
+            end
+
+            appLauncherTapTimer = nil
+            if not appLauncherComboUsed then
+                toggleAppLauncher()
+            end
+            appLauncherComboUsed = false
+        end
+
+        appLauncherTapTimer = hl.timer(waitForSuperRelease, {
+            timeout = 10,
+            type = "oneshot",
+        })
+    end
+
+    -- Press-only listeners are non-consuming: Super continua funcionando como
+    -- modificador para os bindings abaixo. A soltura é detectada por is_key_down.
+    hl.bind("Super_L", beginSuperTap, { non_consuming = true })
+    hl.bind("Super_R", beginSuperTap, { non_consuming = true })
+else
+    -- Fallback para versões sem hl.is_key_down.
+    hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd("qs ipc call appLauncher toggle"), { release = true })
+    hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd("qs ipc call appLauncher toggle"), { release = true })
+end
+
 -- ── Apps ──────────────────────────────────────────
-hl.bind(vars.mainMod .. " + Q", hl.dsp.exec_cmd(vars.terminal))
-hl.bind(vars.mainMod .. " + E", hl.dsp.exec_cmd(vars.fileManager))
-hl.bind(vars.mainMod .. " + R", hl.dsp.exec_cmd(vars.menu))
-hl.bind(vars.mainMod .. " + C", hl.dsp.exec_cmd(vars.code))
-hl.bind(vars.mainMod .. " + B", hl.dsp.exec_cmd(vars.browser))
-hl.bind(vars.mainMod .. " + D", hl.dsp.exec_cmd(vars.rofi))
-hl.bind(vars.mainMod .. " + P", hl.dsp.exec_cmd(vars.allApps))
-hl.bind(vars.mainMod .. " + F5", hl.dsp.exec_cmd(vars.autoClick))
+bindSuper(vars.mainMod .. " + Q", hl.dsp.exec_cmd(vars.terminal))
+bindSuper(vars.mainMod .. " + E", hl.dsp.exec_cmd(vars.fileManager))
+bindSuper(vars.mainMod .. " + C", hl.dsp.exec_cmd(vars.code))
+bindSuper(vars.mainMod .. " + B", hl.dsp.exec_cmd(vars.browser))
+bindSuper(vars.mainMod .. " + P", hl.dsp.exec_cmd(vars.allApps))
+bindSuper(vars.mainMod .. " + F5", hl.dsp.exec_cmd(vars.autoClick))
 
 -- ── Janelas ───────────────────────────────────────
-hl.bind(vars.mainMod .. " + W", hl.dsp.window.close())
-hl.bind(vars.mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
-hl.bind(vars.mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
+bindSuper(vars.mainMod .. " + W", hl.dsp.window.close())
+bindSuper(vars.mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
+bindSuper(vars.mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind("ALT + Tab", hl.dsp.window.cycle_next())
 
 -- ── Sistema ───────────────────────────────────────
-hl.bind(vars.mainMod .. " + L", hl.dsp.exec_cmd(vars.lock))
-hl.bind(vars.mainMod .. " + M", hl.dsp.exec_cmd(vars.wallpaper))
+bindSuper(vars.mainMod .. " + L", hl.dsp.exec_cmd(vars.lock))
+bindSuper(vars.mainMod .. " + M", hl.dsp.exec_cmd(vars.wallpaper))
 hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(vars.btop))
-hl.bind(vars.mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(vars.print))
-hl.bind(vars.mainMod .. " + SHIFT + D", hl.dsp.exec_cmd(vars.record))
+bindSuper(vars.mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(vars.print))
+bindSuper(vars.mainMod .. " + SHIFT + D", hl.dsp.exec_cmd(vars.record))
 
 -- ── Volume/Microfone (SUPER + setas) ────────────────────────
-hl.bind(vars.mainMod .. " + Up", hl.dsp.exec_cmd(vars.soundUp))
-hl.bind(vars.mainMod .. " + Down", hl.dsp.exec_cmd(vars.soundDown))
-hl.bind(vars.mainMod .. " + Left", hl.dsp.exec_cmd(vars.changeSoundOutput))
+bindSuper(vars.mainMod .. " + Up", hl.dsp.exec_cmd(vars.soundUp))
+bindSuper(vars.mainMod .. " + Down", hl.dsp.exec_cmd(vars.soundDown))
+bindSuper(vars.mainMod .. " + Left", hl.dsp.exec_cmd(vars.changeSoundOutput))
 
-hl.bind(vars.mainMod .. " + Delete", hl.dsp.exec_cmd(vars.muteUnmute))
+bindSuper(vars.mainMod .. " + Delete", hl.dsp.exec_cmd(vars.muteUnmute))
 
 -- ── Teclas de mídia (teclado) ─────────────────────
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
@@ -48,29 +159,29 @@ hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = tru
 hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
 
 -- ── Workspaces ────────────────────────────────────
-hl.bind(vars.mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }))
-hl.bind(vars.mainMod .. " + 2", hl.dsp.focus({ workspace = 2 }))
-hl.bind(vars.mainMod .. " + 3", hl.dsp.focus({ workspace = 3 }))
-hl.bind(vars.mainMod .. " + 4", hl.dsp.focus({ workspace = 4 }))
-hl.bind(vars.mainMod .. " + 5", hl.dsp.focus({ workspace = 5 }))
-hl.bind(vars.mainMod .. " + 6", hl.dsp.focus({ workspace = 6 }))
-hl.bind(vars.mainMod .. " + 7", hl.dsp.focus({ workspace = 7 }))
-hl.bind(vars.mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }))
-hl.bind(vars.mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }))
-hl.bind(vars.mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }))
+bindSuper(vars.mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }))
+bindSuper(vars.mainMod .. " + 2", hl.dsp.focus({ workspace = 2 }))
+bindSuper(vars.mainMod .. " + 3", hl.dsp.focus({ workspace = 3 }))
+bindSuper(vars.mainMod .. " + 4", hl.dsp.focus({ workspace = 4 }))
+bindSuper(vars.mainMod .. " + 5", hl.dsp.focus({ workspace = 5 }))
+bindSuper(vars.mainMod .. " + 6", hl.dsp.focus({ workspace = 6 }))
+bindSuper(vars.mainMod .. " + 7", hl.dsp.focus({ workspace = 7 }))
+bindSuper(vars.mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }))
+bindSuper(vars.mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }))
+bindSuper(vars.mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }))
 
-hl.bind(vars.mainMod .. " + SHIFT + 1", hl.dsp.window.move({ workspace = 1 }))
-hl.bind(vars.mainMod .. " + SHIFT + 2", hl.dsp.window.move({ workspace = 2 }))
-hl.bind(vars.mainMod .. " + SHIFT + 3", hl.dsp.window.move({ workspace = 3 }))
-hl.bind(vars.mainMod .. " + SHIFT + 4", hl.dsp.window.move({ workspace = 4 }))
-hl.bind(vars.mainMod .. " + SHIFT + 5", hl.dsp.window.move({ workspace = 5 }))
-hl.bind(vars.mainMod .. " + SHIFT + 6", hl.dsp.window.move({ workspace = 6 }))
-hl.bind(vars.mainMod .. " + SHIFT + 7", hl.dsp.window.move({ workspace = 7 }))
-hl.bind(vars.mainMod .. " + SHIFT + 8", hl.dsp.window.move({ workspace = 8 }))
-hl.bind(vars.mainMod .. " + SHIFT + 9", hl.dsp.window.move({ workspace = 9 }))
-hl.bind(vars.mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
+bindSuper(vars.mainMod .. " + SHIFT + 1", hl.dsp.window.move({ workspace = 1 }))
+bindSuper(vars.mainMod .. " + SHIFT + 2", hl.dsp.window.move({ workspace = 2 }))
+bindSuper(vars.mainMod .. " + SHIFT + 3", hl.dsp.window.move({ workspace = 3 }))
+bindSuper(vars.mainMod .. " + SHIFT + 4", hl.dsp.window.move({ workspace = 4 }))
+bindSuper(vars.mainMod .. " + SHIFT + 5", hl.dsp.window.move({ workspace = 5 }))
+bindSuper(vars.mainMod .. " + SHIFT + 6", hl.dsp.window.move({ workspace = 6 }))
+bindSuper(vars.mainMod .. " + SHIFT + 7", hl.dsp.window.move({ workspace = 7 }))
+bindSuper(vars.mainMod .. " + SHIFT + 8", hl.dsp.window.move({ workspace = 8 }))
+bindSuper(vars.mainMod .. " + SHIFT + 9", hl.dsp.window.move({ workspace = 9 }))
+bindSuper(vars.mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
 
 -- ── Mouse ─────────────────────────────────────────
-hl.bind(vars.mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
-hl.bind(vars.mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+bindSuper(vars.mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
+bindSuper(vars.mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 

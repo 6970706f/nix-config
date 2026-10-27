@@ -4,11 +4,11 @@
   imports = [
     ./home/hyprland
     ./home/waybar
-    ./home/rofi
     ./home/zsh
     ./home/packages.nix
     ./home/kitty
     ./home/dunst
+    ./home/quickshell
   ];
 
   home.username = "user";

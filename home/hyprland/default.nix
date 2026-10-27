@@ -54,10 +54,6 @@
       source = ./config/scripts/toggleaudio.sh;
       executable = true;
     };
-    "hypr/scripts/rofi-menu.sh" = {
-      source = ./config/scripts/rofi-menu.sh;
-      executable = true;
-    };
     "hypr/scripts/record.sh" = {
       source = ./config/scripts/record.sh;
       executable = true;
