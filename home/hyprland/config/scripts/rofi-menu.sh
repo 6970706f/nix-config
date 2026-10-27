@@ -35,6 +35,103 @@ display() {
 }
 
 # ============================================================
+# BLUETOOTH
+# ============================================================
+
+bluetooth() {
+    local powered power choice devices selected mac action
+
+    command -v bluetoothctl >/dev/null 2>&1 || return 1
+
+    while true; do
+        powered=$(bluetoothctl show 2>/dev/null |
+            awk -F': ' '/Powered:/ {print $2; exit}')
+
+        case "$powered" in
+            yes) power="On" ;;
+            no)  power="Off" ;;
+            *)   power="Unknown" ;;
+        esac
+
+        choice=$(menu \
+            "󰂯  Bluetooth: $power" \
+            "󰂰  Enable Bluetooth" \
+            "󰂲  Disable Bluetooth" \
+            "󰋋  Paired Devices" \
+            "󰂱  Scan for Devices") || return 0
+
+        case "$choice" in
+            *"Enable Bluetooth")
+                bluetoothctl power on
+                ;;
+
+            *"Disable Bluetooth")
+                bluetoothctl power off
+                ;;
+
+            *"Paired Devices")
+                devices=$(bluetoothctl devices Paired 2>/dev/null)
+
+                if [[ -z "$devices" ]]; then
+                    printf '%s\n' "No paired devices found" |
+                        "${ROFI[@]}"  -p "Bluetooth" >/dev/null 2>&1 || true
+                    continue
+                fi
+
+                selected=$(printf '%s\n' "$devices" |
+                    "${ROFI[@]}" -p "Bluetooth") || continue
+
+                mac=$(printf '%s\n' "$selected" | awk 'NR == 1 {print $2}')
+
+                [[ "$mac" =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]] || continue
+
+                action=$(menu "Connect" "Disconnect" "Remove" "Back") || continue
+
+                case "$action" in
+                    Connect)
+                        bluetoothctl connect "$mac"
+                        ;;
+                    Disconnect)
+                        bluetoothctl disconnect "$mac"
+                        ;;
+                    Remove)
+                        bluetoothctl remove "$mac"
+                        ;;
+                esac
+                ;;
+
+            *"Scan for Devices")
+                if [[ "$powered" != "yes" ]]; then
+                    printf '%s\n' "Enable Bluetooth before scanning" |
+                        "${ROFI[@]}" -p "Bluetooth" >/dev/null 2>&1 || true
+                    continue
+                fi
+
+                bluetoothctl --timeout 8 scan on >/dev/null 2>&1
+                bluetoothctl scan off >/dev/null 2>&1
+
+                devices=$(bluetoothctl devices 2>/dev/null)
+
+                if [[ -z "$devices" ]]; then
+                    printf '%s\n' "No devices found" |
+                        "${ROFI[@]}" -p "Bluetooth" >/dev/null 2>&1 || true
+                    continue
+                fi
+
+                selected=$(printf '%s\n' "$devices" |
+                    "${ROFI[@]}" -p "Found Devices") || continue
+
+                mac=$(printf '%s\n' "$selected" | awk 'NR == 1 {print $2}')
+
+                [[ "$mac" =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]] || continue
+
+                bluetoothctl pair "$mac"
+                ;;
+        esac
+    done
+}
+
+# ============================================================
 # DISKS
 # ============================================================
 
@@ -206,7 +303,7 @@ power() {
             ;;
 
         *"Log Out")
-            hyprctl dispatch exit
+            hyprctl dispatch 'hl.dsp.exit()'
             ;;
 
         *"Reboot")
@@ -227,6 +324,7 @@ while true; do
     choice=$(menu \
         "󰍹  Display" \
         "󰋊  Disks" \
+        "󰂯  Bluetooth" \
         "󰋼  Clipboard" \
         "󰄀  Color Picker" \
         "󰒓  Scripts" \
@@ -239,6 +337,10 @@ while true; do
 
         *"Disks")
             disks
+            ;;
+
+        *"Bluetooth")
+            bluetooth
             ;;
 
         *"Clipboard")
@@ -258,3 +360,4 @@ while true; do
             ;;
     esac
 done
+

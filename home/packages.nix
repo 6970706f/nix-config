@@ -23,10 +23,6 @@
     glib
     hypridle
 
-    # Temas e ícones
-    flat-remix-gtk
-    flat-remix-icon-theme
-
     # Navegadores
     librewolf
     firefox
@@ -38,7 +34,6 @@
 
     # Wallpaper e automação de entrada
     awww
-    ydotool
 
     # Aplicativos pessoais
     vesktop
@@ -50,7 +45,6 @@
 
     # Spotifast vem de um input do flake
     inputs.spotifast.packages.${pkgs.stdenv.hostPlatform.system}.default
-
-    openssh
   ];
 }
+

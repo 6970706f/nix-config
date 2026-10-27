@@ -26,8 +26,6 @@ hl.bind(vars.mainMod .. " + M", hl.dsp.exec_cmd(vars.wallpaper))
 hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(vars.btop))
 hl.bind(vars.mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(vars.print))
 hl.bind(vars.mainMod .. " + SHIFT + D", hl.dsp.exec_cmd(vars.record))
-hl.bind(vars.mainMod .. " + SHIFT + O", hl.dsp.exec_cmd(vars["1080"]))
-hl.bind(vars.mainMod .. " + SHIFT + P", hl.dsp.exec_cmd(vars["1440"]))
 
 -- ── Volume/Microfone (SUPER + setas) ────────────────────────
 hl.bind(vars.mainMod .. " + Up", hl.dsp.exec_cmd(vars.soundUp))
@@ -75,3 +73,4 @@ hl.bind(vars.mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
 -- ── Mouse ─────────────────────────────────────────
 hl.bind(vars.mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(vars.mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+

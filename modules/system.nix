@@ -38,6 +38,11 @@
     dates = [ "weekly" ];
   };
 
+  nix.settings = {
+    max-jobs = 4;
+    cores = 2;
+  };
+
   # Networking
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
@@ -63,6 +68,11 @@
 
   services.flatpak.enable = true;
   services.gnome.gnome-keyring.enable = true;
+
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = false;
+  };
 
   # Shell
   programs.zsh.enable = true;

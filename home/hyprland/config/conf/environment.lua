@@ -41,8 +41,6 @@ local variables = {
     btop = terminal .. " -e btop",
     print = "~/.config/hypr/scripts/print.sh",
     record = "~/.config/hypr/scripts/record.sh",
-    ["1080"] = "hyprctl keyword monitor ,1920x1080@144,auto,1",
-    ["1440"] = "hyprctl keyword monitor ,3440x1440@120,auto,1",
     clipboard = "cliphist list | rofi -dmenu | cliphist decode | wl-copy",
     muteUnmute = "~/.config/hypr/scripts/mute.sh",
 
@@ -57,3 +55,4 @@ local variables = {
 }
 
 return variables
+

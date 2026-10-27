@@ -16,6 +16,29 @@
 
   home.stateVersion = "26.05";
 
+  # Personal GTK theme and icon preferences belong to Home Manager.
+  gtk = {
+    enable = true;
+
+    theme = {
+      name = "Flat-Remix-GTK-White-Darkest";
+      package = pkgs.flat-remix-gtk;
+    };
+
+    iconTheme = {
+      name = "Flat-Remix-Black-Dark";
+      package = pkgs.flat-remix-icon-theme;
+    };
+
+    colorScheme = "dark";
+  };
+
+  dconf.settings = {
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+    };
+  };
+
   home.pointerCursor = {
     enable = true;
     name = "Bibata-Modern-Classic";
@@ -24,11 +47,6 @@
 
     gtk.enable = true;
     x11.enable = true;
-  };
-
-  home.sessionVariables = {
-    XCURSOR_THEME = "Bibata-Modern-Classic";
-    XCURSOR_SIZE = "24";
   };
 
   xdg.mimeApps = {

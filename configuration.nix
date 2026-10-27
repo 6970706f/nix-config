@@ -1,4 +1,4 @@
-# Main entry point for the NixOS system configuration.
+#Main entry point for the NixOS system configuration.
 { ... }:
 
 {
@@ -6,10 +6,6 @@
     ./hardware-configuration.nix
     ./modules/system.nix
     ./modules/desktop.nix
+    ./modules/audio.nix
   ];
-
-  nix.settings = {
-    max-jobs = 4;
-    cores = 2;
-  };
 }
