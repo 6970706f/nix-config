@@ -2,7 +2,7 @@
 @define-color fg #ffffff;
 
 * {
-  font-family: "JetBrains Mono Nerd", monospace;
+  font-family: "JetBrainsMono Nerd Font", monospace;
   border: none;
   min-height: 0;
   font-weight: bold;

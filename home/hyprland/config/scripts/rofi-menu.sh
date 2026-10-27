@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-ROFI="rofi -dmenu -i -no-custom -config $HOME/.config/rofi/utility.rasi"
+ROFI=(rofi -dmenu -i -no-custom -config "$HOME/.config/rofi/utility.rasi")
 
 menu() {
-    printf '%s\n' "$@" | $ROFI
+    printf '%s\n' "$@" | "${ROFI[@]}"
 }
 
 # ============================================================
@@ -24,7 +24,7 @@ display() {
                 monitors=$(hyprctl monitors 2>/dev/null)
 
                 printf '%s\n' "$monitors" |
-                    $ROFI -dmenu -p "Displays"
+                    "${ROFI[@]}" -p "Displays"
                 ;;
 
             *"Reload Hyprland Config")
@@ -87,7 +87,7 @@ disks() {
         )
 
         selected=$(printf '%s\n' "$devices" |
-            $ROFI -p "Disks") || return
+            "${ROFI[@]}" -p "Disks") || return
 
         [ -n "$selected" ] || return
 
@@ -117,7 +117,7 @@ clipboard() {
     fi
 
     selected=$(cliphist list |
-        $ROFI -p "Clipboard") || return
+        "${ROFI[@]}" -p "Clipboard") || return
 
     [ -n "$selected" ] || return
 
@@ -164,7 +164,7 @@ scripts() {
         [ "${#files[@]}" -gt 0 ] || return
 
         selected=$(printf '%s\n' "${files[@]}" |
-            $ROFI -p "Scripts") || return
+            "${ROFI[@]}" -p "Scripts") || return
 
         [ -n "$selected" ] || return
 

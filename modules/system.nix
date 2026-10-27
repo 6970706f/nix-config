@@ -63,8 +63,6 @@
 
   services.flatpak.enable = true;
   services.gnome.gnome-keyring.enable = true;
-  services.dunst.enable = true;
-  services.openssh.enable = true;
 
   # Shell
   programs.zsh.enable = true;

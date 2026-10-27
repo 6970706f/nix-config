@@ -5,8 +5,9 @@ mkdir -p "$SAVE_DIR"
 
 OUTPUT="$SAVE_DIR/recording_$(date +%Y-%m-%d_%H-%M-%S).mp4"
 
-PID_FILE="/tmp/wf-recorder.pid"
-STATE_FILE="/tmp/recording.state"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+PID_FILE="$RUNTIME_DIR/wf-recorder.pid"
+STATE_FILE="$RUNTIME_DIR/recording.state"
 
 AUDIO_SOURCE="$(pactl get-default-sink).monitor"
 

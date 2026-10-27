@@ -55,7 +55,6 @@
           noto-fonts
           noto-fonts-color-emoji
           roboto
-          nerd-fonts.jetbrains-mono
         ];
 
         fonts.fontconfig = {

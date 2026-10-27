@@ -11,7 +11,6 @@
       mainBar = {
         # Waybar at top layer
         layer = "top";
-        reload_on_style_change = true;
 
         # Waybar position (top|bottom|left|right)
         position = "top";
@@ -20,7 +19,7 @@
         # height = 10;
 
         passthrough = false;
-        reload_style_on_change = true;
+	reload_style_on_change = true;
 
         # Gaps between modules
         spacing = 20;
@@ -52,7 +51,6 @@
         # Per-module config
         "hyprland/workspaces" = {
           disable-scroll = true;
-          on-click = "activate";
           format = "{icon}";
           format-icons = {
             "1" = "I";
@@ -96,7 +94,7 @@
 
         "custom/recorder" = {
           exec = ''
-            [ -f /tmp/recording.state ] && echo '{"text": "⏺", "class": "recording"}' || echo '{"text": "", "class": ""}';
+            [ -f "$XDG_RUNTIME_DIR/recording.state" ] && echo '{"text": "⏺", "class": "recording"}' || echo '{"text": "", "class": ""}';
           '';
           return-type = "json";
           interval = "once";
@@ -116,7 +114,7 @@
           format-wifi = "󰖩";
           format-ethernet = "󰈀";
           format-disconnected = "󰖪";
-          tooltip-format = "{ipAddr} — {signalStrength}%";
+          tooltip-format = "{ipaddr} — {signalStrength}%";
           on-click = "kitty -e nmtui";
         };
       };

@@ -14,7 +14,6 @@
 
     # Ambiente gráfico e ferramentas do Hyprland
     hyprlock
-    kitty
     nwg-look
     hyprpicker
     cliphist
@@ -52,10 +51,6 @@
     # Spotifast vem de um input do flake
     inputs.spotifast.packages.${pkgs.stdenv.hostPlatform.system}.default
 
-    brightnessctl
-    glib
-    hypridle
-    dunst
     openssh
   ];
 }
