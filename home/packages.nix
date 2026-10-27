@@ -22,6 +22,7 @@
     brightnessctl
     glib
     hypridle
+    quickshell
 
     # Navegadores
     librewolf
