@@ -626,7 +626,7 @@ Scope {
                         Text {
                             id: powerLabel
                             anchors.centerIn: parent
-                            text: "󰐥"
+                            text: "⏻"
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
