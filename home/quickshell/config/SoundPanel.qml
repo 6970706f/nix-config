@@ -14,7 +14,7 @@ PopupWindow {
     readonly property color foregroundColor: "#ffffff"
     readonly property color mutedColor: "#b8b8b8"
     readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font"
+    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property string activeTab: "output"
     property string statusMessage: ""
@@ -230,8 +230,8 @@ PopupWindow {
                     text: "󰕾  SOUND"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 14
-                    font.bold: true
+                    font.pixelSize: 15
+                    font.bold: false
                 }
 
                 Text {
@@ -240,7 +240,7 @@ PopupWindow {
                     text: root.statusLabel
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     horizontalAlignment: Text.AlignRight
                 }
             }
@@ -277,8 +277,8 @@ PopupWindow {
                             color: root.activeTab === modelData.key
                                 ? root.foregroundColor : root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: root.activeTab === modelData.key
+                            font.pixelSize: 11
+                            font.bold: false
                         }
 
                         Rectangle {
@@ -321,7 +321,7 @@ PopupWindow {
                             text: "DEFAULT OUTPUT"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
                         Text {
                             width: parent.width
@@ -330,7 +330,7 @@ PopupWindow {
                                 : (Pipewire.ready ? "No output device selected" : "Waiting for PipeWire...")
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 11
+                            font.pixelSize: 12
                             elide: Text.ElideRight
                         }
                     }
@@ -351,8 +351,8 @@ PopupWindow {
                                     ? "  MASTER VOLUME" : "  MASTER VOLUME")
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: true
+                            font.pixelSize: 11
+                            font.bold: false
                         }
 
                         Text {
@@ -365,7 +365,7 @@ PopupWindow {
                                 ? Math.round(Pipewire.defaultAudioSink.audio.volume * 100) + "%" : "--%"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                         }
 
                         Rectangle {
@@ -386,7 +386,7 @@ PopupWindow {
                                     && Pipewire.defaultAudioSink.audio.muted ? "UNMUTE" : "MUTE"
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                             }
 
                             MouseArea {
@@ -460,7 +460,7 @@ PopupWindow {
                             text: "AVAILABLE OUTPUTS"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
                     }
 
@@ -502,7 +502,7 @@ PopupWindow {
                                     text: root.nodeLabel(modelData)
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 10
+                                    font.pixelSize: 11
                                     elide: Text.ElideRight
                                 }
 
@@ -514,7 +514,7 @@ PopupWindow {
                                     text: parent.isDefault ? "DEFAULT" : ""
                                     color: root.mutedColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 9
+                                    font.pixelSize: 10
                                 }
 
                                 MouseArea {
@@ -536,7 +536,7 @@ PopupWindow {
                             text: !Pipewire.ready ? "Waiting for PipeWire..." : "No output devices available."
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                         }
                     }
                 }
@@ -557,7 +557,7 @@ PopupWindow {
                             text: "DEFAULT INPUT"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
                         Text {
                             width: parent.width
@@ -566,7 +566,7 @@ PopupWindow {
                                 : (Pipewire.ready ? "No input device selected" : "Waiting for PipeWire...")
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 11
+                            font.pixelSize: 12
                             elide: Text.ElideRight
                         }
                     }
@@ -584,8 +584,8 @@ PopupWindow {
                                 ? "󰍭  INPUT VOLUME" : "󰍬  INPUT VOLUME"
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: true
+                            font.pixelSize: 11
+                            font.bold: false
                         }
 
                         Text {
@@ -598,7 +598,7 @@ PopupWindow {
                                 ? Math.round(Pipewire.defaultAudioSource.audio.volume * 100) + "%" : "--%"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                         }
 
                         Text {
@@ -611,7 +611,7 @@ PopupWindow {
                                 && Pipewire.defaultAudioSource.audio.muted ? "MUTED" : ""
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 8
+                            font.pixelSize: 9
                         }
 
                         Rectangle {
@@ -632,7 +632,7 @@ PopupWindow {
                                     && Pipewire.defaultAudioSource.audio.muted ? "UNMUTE" : "MUTE"
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                             }
 
                             MouseArea {
@@ -706,7 +706,7 @@ PopupWindow {
                             text: "AVAILABLE INPUTS"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
                     }
 
@@ -748,7 +748,7 @@ PopupWindow {
                                     text: root.nodeLabel(modelData)
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 10
+                                    font.pixelSize: 11
                                     elide: Text.ElideRight
                                 }
 
@@ -760,7 +760,7 @@ PopupWindow {
                                     text: parent.isDefault ? "DEFAULT" : ""
                                     color: root.mutedColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 9
+                                    font.pixelSize: 10
                                 }
 
                                 MouseArea {
@@ -782,7 +782,7 @@ PopupWindow {
                             text: !Pipewire.ready ? "Waiting for PipeWire..." : "No input devices available."
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                         }
                     }
                 }
@@ -803,7 +803,7 @@ PopupWindow {
                             text: "ACTIVE APPLICATION STREAMS"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
                     }
 
@@ -847,7 +847,7 @@ PopupWindow {
                                     text: ""
                                     color: "#ffffff"
                                     font.family: root.fontFamily
-                                    font.pixelSize: 12
+                                    font.pixelSize: 13
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     visible: applicationIcon.status !== Image.Ready
@@ -863,8 +863,8 @@ PopupWindow {
                                     text: root.applicationName(modelData)
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 10
-                                    font.bold: true
+                                    font.pixelSize: 11
+                                    font.bold: false
                                     elide: Text.ElideRight
                                 }
 
@@ -886,7 +886,7 @@ PopupWindow {
                                         text: root.audioNodeReady(modelData) && modelData.audio.muted ? "UNMUTE" : "MUTE"
                                         color: root.foregroundColor
                                         font.family: root.fontFamily
-                                        font.pixelSize: 8
+                                        font.pixelSize: 9
                                     }
 
                                     MouseArea {
@@ -914,7 +914,7 @@ PopupWindow {
                                     text: root.outputForStream(modelData)
                                     color: root.mutedColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     elide: Text.ElideRight
                                 }
 
@@ -974,7 +974,7 @@ PopupWindow {
                                         ? Math.round(modelData.audio.volume * 100) + "%" : "--%"
                                     color: root.mutedColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 9
+                                    font.pixelSize: 10
                                 }
                             }
                         }
@@ -985,7 +985,7 @@ PopupWindow {
                             text: !Pipewire.ready ? "Waiting for PipeWire..." : "No active application audio streams."
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                         }
                     }
                 }
@@ -1006,7 +1006,7 @@ PopupWindow {
                     text: root.statusMessage.length > 0 ? root.statusMessage : "PIPEWIRE AUDIO CONTROLS"
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight
                 }

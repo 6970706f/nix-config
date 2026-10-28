@@ -12,7 +12,7 @@ PopupWindow {
     readonly property color panelColor: "#000000"
     readonly property color foregroundColor: "#ffffff"
     readonly property color mutedColor: "#b8b8b8"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font"
+    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     readonly property int maxWidth: 1080
     readonly property int maxHeight: 780
@@ -41,9 +41,9 @@ PopupWindow {
     // It must contain %s where the encoded query will be inserted.
     property string searchEngineTemplate: "https://duckduckgo.com/?q=%s"
     readonly property string homeDirectory: String(Quickshell.env("HOME") || "")
-    // Indexa apenas diretórios visíveis e úteis. Não varre a HOME inteira,
-    // nem pastas ocultas; cada raiz tem um limite de resultados para evitar
-    // travamentos em bibliotecas grandes.
+    // Index only visible, useful directories. Do not scan the entire HOME directory,
+    // or hidden folders; each root has a result limit to prevent
+    // slowdowns in large libraries.
     readonly property var fileSearchDirectories: root.homeDirectory.length > 0 ? [
         root.homeDirectory + "/Documents",
         root.homeDirectory + "/Documentos",
@@ -74,8 +74,8 @@ PopupWindow {
         if (root.fileSearchDirectories.length === 0)
             return [];
 
-        // O script é constante; diretórios são passados como argumentos separados
-        // (sem interpolação em shell). head limita a saída por pasta a 120 itens.
+        // The script is constant; directories are passed as separate arguments
+        // (without shell interpolation). head limits output to 120 items per folder.
         const indexScript = [
             'for root in "$@"; do',
             '  [ -d "$root" ] || continue',
@@ -311,8 +311,8 @@ PopupWindow {
         });
     }
 
-    // Classifica arquivos para desenhar ícones vetoriais no próprio QML.
-    // Assim os resultados de arquivos não dependem de ícones opcionais do tema.
+    // Classify files to draw vector icons directly in QML.
+    // This keeps file results independent of optional theme icons.
     function fileIconKind(item) {
         if (!item)
             return "generic";
@@ -1254,7 +1254,7 @@ PopupWindow {
             text: ""
             color: root.mutedColor
             font.family: root.fontFamily
-            font.pixelSize: 15
+            font.pixelSize: 16
         }
 
         TextInput {
@@ -1269,7 +1269,7 @@ PopupWindow {
             selectionColor: "#ffffff"
             selectedTextColor: "#000000"
             font.family: root.fontFamily
-            font.pixelSize: 13
+            font.pixelSize: 15
             verticalAlignment: TextInput.AlignVCenter
             focus: root.visible
             activeFocusOnTab: true
@@ -1345,7 +1345,7 @@ PopupWindow {
             text: "Search apps, files, calculations, web (? ...) or commands (> ...)"
             color: "#808080"
             font.family: root.fontFamily
-            font.pixelSize: 13
+            font.pixelSize: 15
             visible: searchInput.text.length === 0
         }
 
@@ -1396,8 +1396,8 @@ PopupWindow {
                         text: "APP LAUNCHER"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 15
-                        font.bold: true
+                        font.pixelSize: 17
+                        font.bold: false
                         font.letterSpacing: 1.0
                     }
 
@@ -1405,7 +1405,7 @@ PopupWindow {
                         text: root.allApplications.length + " INSTALLED APPLICATIONS  /  " + root.topApplications.length + " QUICK PICKS"
                         color: root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
+                        font.pixelSize: 11
                     }
                 }
 
@@ -1432,7 +1432,7 @@ PopupWindow {
                                 text: modelData
                                 color: root.mutedColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 10
                             }
                         }
                     }
@@ -1463,8 +1463,8 @@ PopupWindow {
                     text: "CATEGORIES"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 10
-                    font.bold: true
+                    font.pixelSize: 12
+                    font.bold: false
                     font.letterSpacing: 0.8
                 }
 
@@ -1474,7 +1474,7 @@ PopupWindow {
                     text: "FILTER THE LIBRARY"
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 10
                 }
             }
 
@@ -1518,7 +1518,7 @@ PopupWindow {
                                 text: quickSearchTile.modelData.icon
                                 color: root.mutedColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 12
+                                font.pixelSize: 13
                             }
 
                             Text {
@@ -1531,7 +1531,7 @@ PopupWindow {
                                 text: quickSearchTile.modelData.label
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 11
                                 elide: Text.ElideRight
                             }
 
@@ -1543,7 +1543,7 @@ PopupWindow {
                                 text: String(root.categoryApplicationCount(quickSearchTile.modelData))
                                 color: root.mutedColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 10
                             }
 
                             MouseArea {
@@ -1575,8 +1575,8 @@ PopupWindow {
                     text: "FAVORITES & RECENT"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 10
-                    font.bold: true
+                    font.pixelSize: 12
+                    font.bold: false
                     font.letterSpacing: 0.8
                 }
 
@@ -1587,7 +1587,7 @@ PopupWindow {
                     text: "CTRL+1–6 LAUNCH  ·  CTRL+SHIFT+DEL CLEARS HISTORY"
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 10
                     visible: mainContent.width > 560
                 }
             }
@@ -1630,7 +1630,7 @@ PopupWindow {
                             && root.favoriteIds.indexOf(topAppTile.modelData.id) >= 0 ? "★" : ""
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 11
+                        font.pixelSize: 12
                     }
 
                     IconImage {
@@ -1660,7 +1660,7 @@ PopupWindow {
                             text: topAppTile.modelData.name || topAppTile.modelData.id
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 11
                             wrapMode: Text.Wrap
                             maximumLineCount: 2
                             elide: Text.ElideRight
@@ -1671,7 +1671,7 @@ PopupWindow {
                             text: String((topAppTile.modelData.categories || [])[0] || "Application").toUpperCase()
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 7
+                            font.pixelSize: 9
                             elide: Text.ElideRight
                         }
                     }
@@ -1712,8 +1712,8 @@ PopupWindow {
                     text: "INSTALLED APPLICATIONS"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 10
-                    font.bold: true
+                    font.pixelSize: 12
+                    font.bold: false
                     font.letterSpacing: 0.8
                 }
 
@@ -1723,7 +1723,7 @@ PopupWindow {
                     text: root.allApplications.length + " APPS  ·  A–Z"
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 10
                 }
             }
 
@@ -1777,7 +1777,7 @@ PopupWindow {
                         text: root.favoriteIds.indexOf(allAppTile.modelData.id) >= 0 ? "★" : ""
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                     }
 
                     IconImage {
@@ -1807,7 +1807,7 @@ PopupWindow {
                             text: allAppTile.modelData.name || allAppTile.modelData.id
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 11
                             wrapMode: Text.Wrap
                             maximumLineCount: 2
                             elide: Text.ElideRight
@@ -1818,7 +1818,7 @@ PopupWindow {
                             text: String((allAppTile.modelData.categories || [])[0] || "Application").toUpperCase()
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 7
+                            font.pixelSize: 9
                             elide: Text.ElideRight
                         }
                     }
@@ -1858,8 +1858,8 @@ PopupWindow {
                 text: "SEARCH RESULTS"
                 color: root.foregroundColor
                 font.family: root.fontFamily
-                font.pixelSize: 10
-                font.bold: true
+                font.pixelSize: 12
+                font.bold: false
                 font.letterSpacing: 0.8
             }
 
@@ -1869,7 +1869,7 @@ PopupWindow {
                 text: root.searchResults.length + " RESULTS"
                 color: root.mutedColor
                 font.family: root.fontFamily
-                font.pixelSize: 9
+                font.pixelSize: 11
             }
         }
 
@@ -1987,7 +1987,7 @@ PopupWindow {
                             ctx.lineTo(19, 22);
                             ctx.stroke();
                         } else if (resultRow.modelData.type === "web") {
-                            // Lupa para pesquisa na web e no GitHub.
+                            // Magnifying glass for web and GitHub search.
                             ctx.beginPath();
                             ctx.arc(12, 12, 7, 0, Math.PI * 2);
                             ctx.moveTo(17.2, 17.2);
@@ -1995,7 +1995,7 @@ PopupWindow {
                             ctx.stroke();
                         } else if (resultRow.modelData.type === "directory"
                                 || root.fileIconKind(resultRow.modelData) === "folder") {
-                            // Pasta com aba superior.
+                            // Folder with a top tab.
                             ctx.beginPath();
                             ctx.moveTo(3.5, 8.5);
                             ctx.lineTo(11, 8.5);
@@ -2008,7 +2008,7 @@ PopupWindow {
                             ctx.lineTo(5, 23.5);
                             ctx.stroke();
                         } else {
-                            // Folha com canto dobrado, personalizada pelo tipo do arquivo.
+                            // Folded-corner document, customized by file type.
                             const kind = root.fileIconKind(resultRow.modelData);
                             ctx.beginPath();
                             ctx.moveTo(7, 3);
@@ -2106,7 +2106,7 @@ PopupWindow {
                                 ctx.closePath();
                                 ctx.stroke();
                             } else {
-                                // Documento genérico e texto: linhas de conteúdo.
+                                // Generic document and text: content lines.
                                 ctx.beginPath();
                                 ctx.moveTo(10, 14);
                                 ctx.lineTo(21, 14);
@@ -2135,7 +2135,7 @@ PopupWindow {
                         text: resultRow.modelData.name || resultRow.modelData.id
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 12
+                        font.pixelSize: 14
                         elide: Text.ElideRight
                     }
 
@@ -2145,7 +2145,7 @@ PopupWindow {
                             || resultRow.modelData.comment || String((resultRow.modelData.categories || [])[0] || "Application")
                         color: root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 12
                         elide: Text.ElideRight
                     }
                 }
@@ -2160,7 +2160,7 @@ PopupWindow {
                     text: visible && root.favoriteIds.indexOf(resultRow.modelData.id) >= 0 ? "★" : "☆"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 17
+                    font.pixelSize: 18
 
                     MouseArea {
                         anchors.fill: parent
@@ -2206,8 +2206,8 @@ PopupWindow {
                 text: "NO RESULTS FOUND"
                 color: root.foregroundColor
                 font.family: root.fontFamily
-                font.pixelSize: 12
-                font.bold: true
+                font.pixelSize: 14
+                font.bold: false
                 horizontalAlignment: Text.AlignHCenter
             }
 
@@ -2216,7 +2216,7 @@ PopupWindow {
                 text: root.fileIndexReady ? "Try another search or use ? for web, > for commands." : "Applications are ready; file indexing is still running."
                 color: root.mutedColor
                 font.family: root.fontFamily
-                font.pixelSize: 9
+                font.pixelSize: 11
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
             }
@@ -2234,8 +2234,8 @@ PopupWindow {
                 text: "NO APPLICATIONS FOUND"
                 color: root.foregroundColor
                 font.family: root.fontFamily
-                font.pixelSize: 12
-                font.bold: true
+                font.pixelSize: 14
+                font.bold: false
                 horizontalAlignment: Text.AlignHCenter
             }
 
@@ -2244,7 +2244,7 @@ PopupWindow {
                 text: "Installed desktop entries will appear here."
                 color: root.mutedColor
                 font.family: root.fontFamily
-                font.pixelSize: 9
+                font.pixelSize: 11
                 horizontalAlignment: Text.AlignHCenter
             }
         }
@@ -2255,7 +2255,7 @@ PopupWindow {
             text: root.launchError
             color: root.mutedColor
             font.family: root.fontFamily
-            font.pixelSize: 12
+            font.pixelSize: 14
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
             width: Math.min(parent.width - 40, 420)
@@ -2296,8 +2296,8 @@ PopupWindow {
                     text: "CONFIRM COMMAND"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 13
-                    font.bold: true
+                    font.pixelSize: 15
+                    font.bold: false
                 }
 
                 Text {
@@ -2305,7 +2305,7 @@ PopupWindow {
                     text: "This command may modify system files, require privileges, or stop services. Continue only if you understand its effect."
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 10
+                    font.pixelSize: 12
                     wrapMode: Text.Wrap
                 }
 
@@ -2314,7 +2314,7 @@ PopupWindow {
                     text: root.pendingCommandText
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 10
+                    font.pixelSize: 12
                     elide: Text.ElideRight
                 }
 
@@ -2333,7 +2333,7 @@ PopupWindow {
                             text: "CANCEL"
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 11
                         }
                         MouseArea {
                             id: cancelMouse
@@ -2358,7 +2358,7 @@ PopupWindow {
                             text: "RUN IN KITTY"
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 11
                         }
                         MouseArea {
                             id: confirmMouse

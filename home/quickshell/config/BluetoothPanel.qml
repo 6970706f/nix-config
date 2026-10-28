@@ -14,7 +14,7 @@ PopupWindow {
     readonly property color mutedColor: "#b8b8b8"
     readonly property color borderColor: "#ffffff"
     readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font"
+    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property string activeTab: "paired"
     property string selectedAdapterId: ""
@@ -747,8 +747,8 @@ PopupWindow {
                     text: "󰂯  BLUETOOTH"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 14
-                    font.bold: true
+                    font.pixelSize: 15
+                    font.bold: false
                 }
 
                 Row {
@@ -761,8 +761,8 @@ PopupWindow {
                         text: root.adapterStatus
                         color: root.adapterStatus === "ON" ? root.foregroundColor : root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
-                        font.bold: root.adapterStatus === "ON"
+                        font.pixelSize: 10
+                        font.bold: false
                     }
 
                     Rectangle {
@@ -781,7 +781,7 @@ PopupWindow {
                                 : (root.activeAdapter && root.activeAdapter.enabled ? "POWER OFF" : "POWER ON")
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
 
                         MouseArea {
@@ -816,7 +816,7 @@ PopupWindow {
                         : "ADAPTER: unavailable"
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     elide: Text.ElideRight
                 }
 
@@ -836,7 +836,7 @@ PopupWindow {
                         text: "SWITCH"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
+                        font.pixelSize: 10
                     }
 
                     MouseArea {
@@ -873,8 +873,8 @@ PopupWindow {
                         text: "PAIRED"
                         color: root.activeTab === "paired" ? root.foregroundColor : root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: root.activeTab === "paired"
+                        font.pixelSize: 11
+                        font.bold: false
                     }
 
                     Rectangle {
@@ -909,8 +909,8 @@ PopupWindow {
                         text: "AVAILABLE"
                         color: root.activeTab === "available" ? root.foregroundColor : root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: root.activeTab === "available"
+                        font.pixelSize: 11
+                        font.bold: false
                     }
 
                     Rectangle {
@@ -949,8 +949,8 @@ PopupWindow {
                         ? root.foregroundColor
                         : root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
-                    font.bold: root.activeAdapter && root.activeAdapter.discovering
+                    font.pixelSize: 10
+                    font.bold: false
                 }
 
                 Rectangle {
@@ -970,7 +970,7 @@ PopupWindow {
                         text: "SCAN"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
+                        font.pixelSize: 10
                     }
 
                     MouseArea {
@@ -1015,7 +1015,7 @@ PopupWindow {
                             text: root.deviceGlyph(pairedDeviceRow.device)
                             color: pairedDeviceRow.device.connected ? root.foregroundColor : root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 15
+                            font.pixelSize: 16
                         }
 
                         Text {
@@ -1030,8 +1030,8 @@ PopupWindow {
                             text: root.deviceName(pairedDeviceRow.device)
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: pairedDeviceRow.device.connected
+                            font.pixelSize: 11
+                            font.bold: false
                             elide: Text.ElideRight
                         }
 
@@ -1061,7 +1061,7 @@ PopupWindow {
                             }
                             color: pairedDeviceRow.device.connected ? root.foregroundColor : root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 8
+                            font.pixelSize: 9
                             elide: Text.ElideRight
                         }
 
@@ -1087,7 +1087,7 @@ PopupWindow {
                                         : (pairedDeviceRow.device.connected ? "DISCONNECT" : "CONNECT")
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                 }
 
                                 MouseArea {
@@ -1119,7 +1119,7 @@ PopupWindow {
                                     text: "FORGET"
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                 }
 
                                 MouseArea {
@@ -1146,7 +1146,7 @@ PopupWindow {
                                     text: "CONFIRM"
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                 }
 
                                 MouseArea {
@@ -1173,7 +1173,7 @@ PopupWindow {
                                     text: "CANCEL"
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                 }
 
                                 MouseArea {
@@ -1219,7 +1219,7 @@ PopupWindow {
                             text: root.deviceGlyph(availableDeviceRow.device)
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 15
+                            font.pixelSize: 16
                         }
 
                         Text {
@@ -1231,7 +1231,7 @@ PopupWindow {
                             text: root.deviceName(availableDeviceRow.device)
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                             elide: Text.ElideRight
                         }
 
@@ -1248,7 +1248,7 @@ PopupWindow {
                                 : root.deviceTypeLabel(availableDeviceRow.device)
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 8
+                            font.pixelSize: 9
                             elide: Text.ElideRight
                         }
 
@@ -1275,7 +1275,7 @@ PopupWindow {
                                     : "PAIR"
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                             }
 
                             MouseArea {
@@ -1328,7 +1328,7 @@ PopupWindow {
                         : root.availableDevices.length === 0
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     wrapMode: Text.Wrap
                 }
             }
@@ -1356,7 +1356,7 @@ PopupWindow {
                                     : "Bluetooth ready.")))
                     color: root.errorMessage.length > 0 ? "#d4d4d4" : root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 9
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap

@@ -13,8 +13,8 @@
         width = "(260, 340)";
         height = "(0, 140)";
 
-        # Aparência
-        font = "JetBrains Mono 10";
+        # Appearance
+        font = "JetBrainsMono Nerd Font ExtraLight 10";
         padding = 14;
         horizontal_padding = 16;
         text_icon_padding = 0;
@@ -24,7 +24,7 @@
         separator_height = 0;
         transparency = 0;
 
-        # Ícones e indicadores
+        # Icons and indicators
         icon_position = "off";
         show_indicators = false;
         indicate_hidden = true;
@@ -32,7 +32,7 @@
         stack_duplicates = true;
         hide_duplicate_count = false;
 
-        # Texto
+        # Text
         markup = "full";
         format = "<b>%s</b>\\n%b";
         alignment = "left";
@@ -42,14 +42,14 @@
         ignore_newline = false;
         show_age_threshold = -1;
 
-        # Barra de progresso
+        # Progress bar
         progress_bar = true;
         progress_bar_height = 4;
         progress_bar_frame_width = 0;
         progress_bar_min_width = 150;
         progress_bar_max_width = 300;
 
-        # Interação
+        # Interaction
         mouse_left_click = "close_current";
         mouse_middle_click = "do_action, close_current";
         mouse_right_click = "close_all";
@@ -83,4 +83,3 @@
     };
   };
 }
-

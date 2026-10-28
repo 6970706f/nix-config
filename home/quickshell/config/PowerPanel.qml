@@ -13,7 +13,7 @@ PopupWindow {
     readonly property color mutedColor: "#b8b8b8"
     readonly property color borderColor: "#ffffff"
     readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font"
+    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property bool confirmationVisible: false
     property string pendingAction: ""
@@ -204,8 +204,8 @@ PopupWindow {
                     text: root.confirmationVisible ? "CONFIRM ACTION" : "POWER OPTIONS"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 12
-                    font.bold: true
+                    font.pixelSize: 13
+                    font.bold: false
                 }
 
                 Text {
@@ -214,7 +214,7 @@ PopupWindow {
                     text: root.actionBusy ? "WORKING" : "SYSTEM"
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     horizontalAlignment: Text.AlignRight
                 }
             }
@@ -250,7 +250,7 @@ PopupWindow {
                             text: optionRow.modelData.icon
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 13
+                            font.pixelSize: 14
                             horizontalAlignment: Text.AlignHCenter
                         }
 
@@ -263,8 +263,8 @@ PopupWindow {
                             text: optionRow.modelData.label
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: true
+                            font.pixelSize: 11
+                            font.bold: false
                             elide: Text.ElideRight
                         }
 
@@ -276,7 +276,7 @@ PopupWindow {
                             text: "󰅂"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 11
+                            font.pixelSize: 12
                         }
 
                         MouseArea {
@@ -308,8 +308,8 @@ PopupWindow {
                         text: root.actionName(root.pendingAction) + "?"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 12
-                        font.bold: true
+                        font.pixelSize: 13
+                        font.bold: false
                         wrapMode: Text.WordWrap
                     }
 
@@ -320,7 +320,7 @@ PopupWindow {
                         text: root.actionDescription(root.pendingAction)
                         color: root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                         wrapMode: Text.WordWrap
                     }
                 }
@@ -331,7 +331,7 @@ PopupWindow {
                     text: root.errorMessage
                     color: "#ff7777"
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     wrapMode: Text.WordWrap
                     maximumLineCount: 2
                     elide: Text.ElideRight
@@ -354,8 +354,8 @@ PopupWindow {
                             text: "CANCEL"
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: true
+                            font.pixelSize: 11
+                            font.bold: false
                         }
 
                         MouseArea {
@@ -381,8 +381,8 @@ PopupWindow {
                             text: root.actionBusy ? "RUNNING..." : "CONFIRM"
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: true
+                            font.pixelSize: 11
+                            font.bold: false
                         }
 
                         MouseArea {
@@ -404,7 +404,7 @@ PopupWindow {
                 text: "SELECT AN ACTION TO CONTINUE"
                 color: root.mutedColor
                 font.family: root.fontFamily
-                font.pixelSize: 8
+                font.pixelSize: 9
                 horizontalAlignment: Text.AlignHCenter
             }
         }

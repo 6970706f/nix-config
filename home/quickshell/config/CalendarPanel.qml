@@ -12,7 +12,7 @@ PopupWindow {
     readonly property color mutedColor: "#b8b8b8"
     readonly property color borderColor: "#ffffff"
     readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font"
+    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     readonly property var monthNames: [
         "January", "February", "March", "April", "May", "June",
@@ -183,8 +183,8 @@ PopupWindow {
                     text: root.formatTime(calendarClock.date)
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 11
-                    font.bold: true
+                    font.pixelSize: 12
+                    font.bold: false
                     verticalAlignment: Text.AlignVCenter
                 }
 
@@ -196,7 +196,7 @@ PopupWindow {
                     text: root.formatFullDate(calendarClock.date)
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     horizontalAlignment: Text.AlignRight
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight
@@ -228,7 +228,7 @@ PopupWindow {
                         text: "<"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 11
+                        font.pixelSize: 12
                     }
 
                     MouseArea {
@@ -249,8 +249,8 @@ PopupWindow {
                         text: root.monthNames[root.displayedMonth].toUpperCase() + " " + root.displayedYear
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: true
+                        font.pixelSize: 11
+                        font.bold: false
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                     }
@@ -269,7 +269,7 @@ PopupWindow {
                         text: ">"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 11
+                        font.pixelSize: 12
                     }
 
                     MouseArea {
@@ -294,8 +294,8 @@ PopupWindow {
                         text: "TODAY"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
-                        font.bold: true
+                        font.pixelSize: 9
+                        font.bold: false
                     }
 
                     MouseArea {
@@ -333,8 +333,8 @@ PopupWindow {
                             text: parent.modelData
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 8
-                            font.bold: true
+                            font.pixelSize: 9
+                            font.bold: false
                         }
                     }
                 }
@@ -378,8 +378,8 @@ PopupWindow {
                                 ? "#000000"
                                 : (dayCell.modelData.currentMonth ? root.foregroundColor : "#626262")
                             font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: dayCell.isSelected || dayCell.isToday
+                            font.pixelSize: 11
+                            font.bold: false
                         }
 
                         Rectangle {

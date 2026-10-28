@@ -13,7 +13,7 @@ PopupWindow {
     readonly property color foregroundColor: "#ffffff"
     readonly property color mutedColor: "#b8b8b8"
     readonly property color borderColor: "#ffffff"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font"
+    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property bool networkManagerAvailable: true
     property string activeTab: "wifi"
@@ -638,8 +638,8 @@ PopupWindow {
                     text: "󰖩  NETWORK"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 14
-                    font.bold: true
+                    font.pixelSize: 15
+                    font.bold: false
                 }
 
                 Text {
@@ -648,7 +648,7 @@ PopupWindow {
                     text: root.statusLoading ? "REFRESHING" : (root.busy ? "WORKING" : "")
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     horizontalAlignment: Text.AlignRight
                     elide: Text.ElideRight
                 }
@@ -675,8 +675,8 @@ PopupWindow {
                         text: "WI-FI"
                         color: root.activeTab === "wifi" ? root.foregroundColor : root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: root.activeTab === "wifi"
+                        font.pixelSize: 11
+                        font.bold: false
                     }
 
                     Rectangle {
@@ -706,8 +706,8 @@ PopupWindow {
                         text: "ETHERNET"
                         color: root.activeTab === "ethernet" ? root.foregroundColor : root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: root.activeTab === "ethernet"
+                        font.pixelSize: 11
+                        font.bold: false
                     }
 
                     Rectangle {
@@ -743,8 +743,8 @@ PopupWindow {
                         text: "WI-FI"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 11
-                        font.bold: true
+                        font.pixelSize: 12
+                        font.bold: false
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
@@ -752,7 +752,7 @@ PopupWindow {
                         text: root.wifiStateLabel()
                         color: root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                         anchors.verticalCenter: parent.verticalCenter
                         elide: Text.ElideRight
                         width: parent.width - 70
@@ -778,7 +778,7 @@ PopupWindow {
                             text: root.wifiEnabled ? "Wi-Fi ON" : "Wi-Fi OFF"
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
 
                         MouseArea {
@@ -806,7 +806,7 @@ PopupWindow {
                             text: "Disconnect"
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
 
                         MouseArea {
@@ -833,7 +833,7 @@ PopupWindow {
                             text: root.scanLoading ? "Scanning…" : "↻ Refresh"
                             color: root.foregroundColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                         }
 
                         MouseArea {
@@ -855,7 +855,7 @@ PopupWindow {
                         : "No Wi-Fi network connected"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 10
+                    font.pixelSize: 11
                     elide: Text.ElideRight
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -891,7 +891,7 @@ PopupWindow {
                                 text: networkRow.modelData.ssid
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 10
+                                font.pixelSize: 11
                                 verticalAlignment: Text.AlignVCenter
                                 elide: Text.ElideRight
                             }
@@ -903,7 +903,7 @@ PopupWindow {
                                     + (networkRow.modelData.security === "--" ? "" : "  󰌾")
                                 color: root.mutedColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                                 horizontalAlignment: Text.AlignRight
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -914,7 +914,7 @@ PopupWindow {
                                 text: networkRow.modelData.inUse ? "✓" : ""
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 11
+                                font.pixelSize: 12
                                 horizontalAlignment: Text.AlignRight
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -938,7 +938,7 @@ PopupWindow {
                     text: root.scanLoading ? "Scanning for available networks…" : "No networks found. Refresh the list."
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     elide: Text.ElideRight
                 }
 
@@ -953,7 +953,7 @@ PopupWindow {
                         text: "Password for: " + root.pendingDisplayName
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                         elide: Text.ElideRight
                     }
 
@@ -975,7 +975,7 @@ PopupWindow {
                             color: root.foregroundColor
                             placeholderTextColor: "#777777"
                             font.family: root.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                             leftPadding: 9
                             rightPadding: 9
                             background: Rectangle {
@@ -999,7 +999,7 @@ PopupWindow {
                                 text: "Cancel"
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                             }
                             MouseArea {
                                 id: cancelPasswordMouse
@@ -1025,7 +1025,7 @@ PopupWindow {
                                 text: "Connect"
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                             }
                             MouseArea {
                                 id: connectPasswordMouse
@@ -1055,8 +1055,8 @@ PopupWindow {
                         text: "ETHERNET"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 11
-                        font.bold: true
+                        font.pixelSize: 12
+                        font.bold: false
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
@@ -1064,7 +1064,7 @@ PopupWindow {
                         text: root.ethernetStateLabel()
                         color: root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
+                        font.pixelSize: 10
                         anchors.verticalCenter: parent.verticalCenter
                         elide: Text.ElideRight
                         width: parent.width - 100
@@ -1081,7 +1081,7 @@ PopupWindow {
                         text: root.ethernetDevice ? "Interface: " + root.ethernetDevice : "Interface: not detected"
                         color: root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
+                        font.pixelSize: 10
                         elide: Text.ElideRight
                     }
 
@@ -1091,7 +1091,7 @@ PopupWindow {
                         text: "IPv4: " + (root.ethernetIp || "unavailable")
                         color: root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
+                        font.pixelSize: 10
                         elide: Text.ElideRight
                     }
                 }
@@ -1110,7 +1110,7 @@ PopupWindow {
                         text: root.ethernetConnected() ? "Disconnect" : "Enable connection"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
+                        font.pixelSize: 10
                     }
 
                     MouseArea {
@@ -1142,7 +1142,7 @@ PopupWindow {
                         : (root.statusMessage.length > 0 ? root.statusMessage : root.connectivityLabel())
                     color: root.errorMessage.length > 0 ? "#d4d4d4" : root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap

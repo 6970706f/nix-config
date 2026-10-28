@@ -11,9 +11,9 @@ Scope {
 
     readonly property color backgroundColor: "#000000"
     readonly property color foregroundColor: "#ffffff"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font"
+    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
-    // Barra: escala única para altura, margens e separação entre grupos.
+    // Bar: a single scale for height, margins, and spacing between groups.
     readonly property int barHeight: 28
     readonly property int barEdgeMargin: 24
     readonly property int barModuleSpacing: 16
@@ -73,13 +73,13 @@ Scope {
         }
     }
 
-    // O áudio e o microfone usam os nós padrão atuais do PipeWire.
+    // Audio and microphone use the current default PipeWire nodes.
     PwObjectTracker {
         objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource]
     }
 
-    // Mantém o estado de rede compatível com o que a Waybar exibia.
-    // Usa nmcli para manter o estado e o ícone da rede compatíveis com a barra anterior.
+    // Keeps the network state compatible with what Waybar displayed.
+    // Uses nmcli to keep the network state and icon compatible with the previous bar.
     Process {
         id: networkProcess
         command: ["sh", "-c", `
@@ -104,7 +104,7 @@ Scope {
             onStreamFinished: {
                 const fields = this.text.trim().split("|");
                 const state = fields[0] || "disconnected";
-                const address = fields[1] || "IP indisponível";
+                const address = fields[1] || "IP unavailable";
                 const signal = fields[2] || "0";
 
                 if (state === "wifi")
@@ -127,7 +127,7 @@ Scope {
         }
     }
 
-    // Equivalente ao custom/recorder: observa o mesmo arquivo de estado.
+    // Equivalent to custom/recorder: watches the same state file.
     Process {
         id: recordingProcess
         command: ["sh", "-c", 'if [ -n "$XDG_RUNTIME_DIR" ] && [ -f "$XDG_RUNTIME_DIR/recording.state" ]; then printf recording; fi']
@@ -179,7 +179,7 @@ Scope {
                 right: 0
             }
 
-            // Região esquerda: lançador do NixOS.
+            // Left section: NixOS launcher.
             Row {
                 id: leftModules
                 anchors.left: parent.left
@@ -198,7 +198,7 @@ Scope {
                         color: root.foregroundColor
                         font.family: root.fontFamily
                         font.pixelSize: 15
-                        font.bold: true
+                        font.bold: false
                     }
 
                     MouseArea {
@@ -225,7 +225,7 @@ Scope {
                 }
             }
 
-            // Região central: workspaces existentes, com algarismos romanos.
+            // Center section: existing workspaces, using Roman numerals.
             Row {
                 id: workspaceModules
                 anchors.centerIn: parent
@@ -256,7 +256,7 @@ Scope {
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 12
-                            font.bold: true
+                            font.bold: false
                         }
 
                         Rectangle {
@@ -280,7 +280,7 @@ Scope {
                 }
             }
 
-            // Região direita dividida por função: estado, recursos, conectividade e controles.
+            // Right section grouped by function: status, resources, connectivity, and controls.
             Row {
                 id: rightModules
                 anchors.right: parent.right
@@ -300,7 +300,7 @@ Scope {
                         color: root.foregroundColor
                         font.family: root.fontFamily
                         font.pixelSize: 10
-                        font.bold: true
+                        font.bold: false
                     }
 
                     Item {
@@ -318,7 +318,7 @@ Scope {
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
-                            font.bold: true
+                            font.bold: false
                         }
                     }
                 }
@@ -335,11 +335,11 @@ Scope {
                         Text {
                             id: cpuLabel
                             anchors.centerIn: parent
-                            text: "󰻠 " + systemMonitorPanel.cpuUsage + "%"
+                            text: "󰻠  " + systemMonitorPanel.cpuUsage + "%"
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
-                            font.bold: true
+                            font.bold: false
                         }
 
                         MouseArea {
@@ -374,11 +374,11 @@ Scope {
                         Text {
                             id: memoryLabel
                             anchors.centerIn: parent
-                            text: "󰍛 " + systemMonitorPanel.memoryUsage + "%"
+                            text: "󰍛  " + systemMonitorPanel.memoryUsage + "%"
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
-                            font.bold: true
+                            font.bold: false
                         }
 
                         MouseArea {
@@ -431,7 +431,7 @@ Scope {
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
-                            font.bold: true
+                            font.bold: false
                         }
 
                         MouseArea {
@@ -469,7 +469,7 @@ Scope {
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
-                            font.bold: true
+                            font.bold: false
                         }
 
                         MouseArea {
@@ -512,24 +512,44 @@ Scope {
 
                     Item {
                         id: audioModule
-                        width: audioLabel.implicitWidth
+                        width: audioContent.implicitWidth
                         height: 22
 
-                        Text {
-                            id: audioLabel
+                        Row {
+                            id: audioContent
                             anchors.centerIn: parent
-                            text: {
-                                const sink = Pipewire.defaultAudioSink;
-                                if (!sink || !sink.audio)
-                                    return "  --%";
-                                if (sink.audio.muted)
-                                    return " ";
-                                return "  " + Math.round(sink.audio.volume * 100) + "%";
+                            spacing: 4
+
+                            Text {
+                                id: audioIcon
+                                text: {
+                                    const sink = Pipewire.defaultAudioSink;
+                                    if (!sink || !sink.audio)
+                                        return "";
+                                    return sink.audio.muted ? "" : "";
+                                }
+                                color: root.foregroundColor
+                                font.family: root.fontFamily
+                                font.pixelSize: 13
+                                font.bold: false
                             }
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: true
+
+                            Text {
+                                id: audioValue
+                                text: {
+                                    const sink = Pipewire.defaultAudioSink;
+                                    if (!sink || !sink.audio)
+                                        return "--%";
+                                    if (sink.audio.muted)
+                                        return "";
+                                    return Math.round(sink.audio.volume * 100) + "%";
+                                }
+                                visible: text.length > 0
+                                color: root.foregroundColor
+                                font.family: root.fontFamily
+                                font.pixelSize: 13
+                                font.bold: false
+                            }
                         }
 
                         MouseArea {
@@ -580,11 +600,11 @@ Scope {
                         Text {
                             id: clockLabel
                             anchors.centerIn: parent
-                            text: "󰥔 " + Qt.formatDateTime(systemClock.date, "HH:mm")
+                            text: "󰥔  " + Qt.formatDateTime(systemClock.date, "HH:mm")
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
-                            font.bold: true
+                            font.bold: false
                         }
 
                         MouseArea {
@@ -630,7 +650,7 @@ Scope {
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
-                            font.bold: true
+                            font.bold: false
                         }
 
                         MouseArea {

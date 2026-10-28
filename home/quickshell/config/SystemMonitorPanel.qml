@@ -16,7 +16,7 @@ PopupWindow {
     readonly property color dimColor: "#686868"
     readonly property color borderColor: "#ffffff"
     readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font"
+    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property int cpuUsage: 0
     property int cpuCores: 1
@@ -293,8 +293,8 @@ PopupWindow {
                     text: "󰻠  SYSTEM MONITOR"
                     color: root.foregroundColor
                     font.family: root.fontFamily
-                    font.pixelSize: 14
-                    font.bold: true
+                    font.pixelSize: 15
+                    font.bold: false
                 }
 
                 Text {
@@ -303,7 +303,7 @@ PopupWindow {
                     text: root.activeTab === "cpu" ? "CPU / LIVE" : "MEMORY / LIVE"
                     color: root.mutedColor
                     font.family: root.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     horizontalAlignment: Text.AlignRight
                 }
             }
@@ -330,8 +330,8 @@ PopupWindow {
                         text: "CPU"
                         color: root.activeTab === "cpu" ? root.foregroundColor : root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: root.activeTab === "cpu"
+                        font.pixelSize: 11
+                        font.bold: false
                     }
 
                     Rectangle {
@@ -362,8 +362,8 @@ PopupWindow {
                         text: "MEMORY"
                         color: root.activeTab === "memory" ? root.foregroundColor : root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: root.activeTab === "memory"
+                        font.pixelSize: 11
+                        font.bold: false
                     }
 
                     Rectangle {
@@ -406,8 +406,8 @@ PopupWindow {
                         text: root.cpuUsage + "%"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 25
-                        font.bold: true
+                        font.pixelSize: 26
+                        font.bold: false
                     }
 
                     Column {
@@ -421,8 +421,8 @@ PopupWindow {
                             text: "TOTAL CPU USAGE"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
-                            font.bold: true
+                            font.pixelSize: 10
+                            font.bold: false
                         }
 
                         Text {
@@ -430,7 +430,7 @@ PopupWindow {
                             text: root.cpuCores + " logical cores · sampled live"
                             color: root.dimColor
                             font.family: root.fontFamily
-                            font.pixelSize: 8
+                            font.pixelSize: 9
                             elide: Text.ElideRight
                         }
                     }
@@ -480,7 +480,7 @@ PopupWindow {
                                     text: modelData.label
                                     color: root.dimColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     horizontalAlignment: Text.AlignHCenter
                                 }
 
@@ -489,8 +489,8 @@ PopupWindow {
                                     text: modelData.value
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 12
-                                    font.bold: true
+                                    font.pixelSize: 13
+                                    font.bold: false
                                     horizontalAlignment: Text.AlignHCenter
                                 }
                             }
@@ -508,7 +508,7 @@ PopupWindow {
                         text: root.cpuModel
                         color: root.mutedColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
+                        font.pixelSize: 9
                         width: parent.width - 5
                         elide: Text.ElideRight
                     }
@@ -526,7 +526,7 @@ PopupWindow {
                             + "     UPTIME  " + root.formatUptime(root.uptimeSeconds)
                         color: root.dimColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
+                        font.pixelSize: 9
                         width: parent.width
                         elide: Text.ElideRight
                     }
@@ -548,8 +548,8 @@ PopupWindow {
                         text: "TOP PROCESSES  /  CPU"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
-                        font.bold: true
+                        font.pixelSize: 10
+                        font.bold: false
                     }
 
                     Text {
@@ -558,7 +558,7 @@ PopupWindow {
                         text: "CPU · RSS"
                         color: root.dimColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
+                        font.pixelSize: 9
                     }
                 }
 
@@ -588,7 +588,7 @@ PopupWindow {
                                     text: modelData.pid
                                     color: "#9a9a9a"
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     verticalAlignment: Text.AlignVCenter
                                 }
 
@@ -605,7 +605,7 @@ PopupWindow {
                                         text: String(modelData.name || "unknown")
                                         color: "#f2f2f2"
                                         font.family: root.fontFamily
-                                        font.pixelSize: 9
+                                        font.pixelSize: 10
                                         verticalAlignment: Text.AlignVCenter
                                         elide: Text.ElideRight
                                     }
@@ -632,7 +632,7 @@ PopupWindow {
                                     text: Number(modelData.cpu).toFixed(1) + "%"
                                     color: "#f2f2f2"
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     horizontalAlignment: Text.AlignRight
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -643,7 +643,7 @@ PopupWindow {
                                     text: root.formatMemory(modelData.rss)
                                     color: "#c0c0c0"
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     horizontalAlignment: Text.AlignRight
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -665,7 +665,7 @@ PopupWindow {
                         text: "Waiting for process data…"
                         color: root.dimColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
+                        font.pixelSize: 9
                         verticalAlignment: Text.AlignVCenter
                     }
                 }
@@ -682,7 +682,7 @@ PopupWindow {
                             : "CPU frequency unavailable"
                         color: root.dimColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
+                        font.pixelSize: 9
                     }
                 }
             }
@@ -704,8 +704,8 @@ PopupWindow {
                         text: root.formatMemory(root.memUsedKb)
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 22
-                        font.bold: true
+                        font.pixelSize: 23
+                        font.bold: false
                     }
 
                     Column {
@@ -719,8 +719,8 @@ PopupWindow {
                             text: "RAM IN USE"
                             color: root.mutedColor
                             font.family: root.fontFamily
-                            font.pixelSize: 9
-                            font.bold: true
+                            font.pixelSize: 10
+                            font.bold: false
                         }
 
                         Text {
@@ -728,7 +728,7 @@ PopupWindow {
                             text: root.memoryUsage + "% of " + root.formatMemory(root.memTotalKb)
                             color: root.dimColor
                             font.family: root.fontFamily
-                            font.pixelSize: 8
+                            font.pixelSize: 9
                             elide: Text.ElideRight
                         }
                     }
@@ -778,7 +778,7 @@ PopupWindow {
                                     text: modelData.label
                                     color: root.dimColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     horizontalAlignment: Text.AlignHCenter
                                 }
 
@@ -787,8 +787,8 @@ PopupWindow {
                                     text: modelData.value
                                     color: root.foregroundColor
                                     font.family: root.fontFamily
-                                    font.pixelSize: 11
-                                    font.bold: true
+                                    font.pixelSize: 12
+                                    font.bold: false
                                     horizontalAlignment: Text.AlignHCenter
                                 }
                             }
@@ -813,7 +813,7 @@ PopupWindow {
                                 text: "SWAP"
                                 color: root.mutedColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                             }
 
                             Text {
@@ -822,7 +822,7 @@ PopupWindow {
                                     + " / " + root.formatMemory(root.swapTotalKb)
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                             }
                         }
 
@@ -853,7 +853,7 @@ PopupWindow {
                             + root.formatMemory(root.diskTotalKb) + "  ·  " + root.diskPercent
                         color: root.dimColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
+                        font.pixelSize: 9
                         width: parent.width
                         elide: Text.ElideRight
                     }
@@ -875,8 +875,8 @@ PopupWindow {
                         text: "TOP PROCESSES  /  MEMORY"
                         color: root.foregroundColor
                         font.family: root.fontFamily
-                        font.pixelSize: 9
-                        font.bold: true
+                        font.pixelSize: 10
+                        font.bold: false
                     }
 
                     Text {
@@ -885,7 +885,7 @@ PopupWindow {
                         text: "RAM · CPU"
                         color: root.dimColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
+                        font.pixelSize: 9
                     }
                 }
 
@@ -915,7 +915,7 @@ PopupWindow {
                                     text: modelData.pid
                                     color: "#9a9a9a"
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     verticalAlignment: Text.AlignVCenter
                                 }
 
@@ -932,7 +932,7 @@ PopupWindow {
                                         text: String(modelData.name || "unknown")
                                         color: "#f2f2f2"
                                         font.family: root.fontFamily
-                                        font.pixelSize: 9
+                                        font.pixelSize: 10
                                         verticalAlignment: Text.AlignVCenter
                                         elide: Text.ElideRight
                                     }
@@ -959,7 +959,7 @@ PopupWindow {
                                     text: Number(modelData.mem).toFixed(1) + "%"
                                     color: "#f2f2f2"
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     horizontalAlignment: Text.AlignRight
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -970,7 +970,7 @@ PopupWindow {
                                     text: root.formatMemory(modelData.rss)
                                     color: "#c0c0c0"
                                     font.family: root.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     horizontalAlignment: Text.AlignRight
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -992,7 +992,7 @@ PopupWindow {
                         text: "Waiting for process data…"
                         color: root.dimColor
                         font.family: root.fontFamily
-                        font.pixelSize: 8
+                        font.pixelSize: 9
                         verticalAlignment: Text.AlignVCenter
                     }
                 }
