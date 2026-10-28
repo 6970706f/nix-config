@@ -1,5 +1,9 @@
 { pkgs, inputs, ... }:
 
+let
+  unstable = inputs.nixpkgs-unstable.legacyPackages.${pkgs.system};
+in
+
 {
   home.packages = with pkgs; [
     # Desenvolvimento e linha de comando
@@ -11,6 +15,8 @@
     zip
     unzip
     btop
+    unstable.codex
+    bubblewrap
 
     # Ambiente gráfico e ferramentas do Hyprland
     hyprlock
@@ -41,8 +47,9 @@
     seahorse
     file-roller
 
-    # Audio
+    # Audio/Video
     pulseaudio
+    mpv
 
     # Spotifast vem de um input do flake
     inputs.spotifast.packages.${pkgs.stdenv.hostPlatform.system}.default

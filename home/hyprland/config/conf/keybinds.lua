@@ -25,7 +25,7 @@ local function bindSuper(keys, dispatcher, options)
 end
 
 local function toggleAppLauncher()
-    hl.dispatch(hl.dsp.exec_cmd("qs ipc call appLauncher toggle"))
+    hl.dispatch(hl.dsp.exec_cmd(vars.appLauncherToggle))
 end
 
 if canPollKeyState then
@@ -111,8 +111,8 @@ if canPollKeyState then
     hl.bind("Super_R", beginSuperTap, { non_consuming = true })
 else
     -- Fallback para versões sem hl.is_key_down.
-    hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd("qs ipc call appLauncher toggle"), { release = true })
-    hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd("qs ipc call appLauncher toggle"), { release = true })
+    hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd(vars.appLauncherToggle), { release = true })
+    hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd(vars.appLauncherToggle), { release = true })
 end
 
 -- ── Apps ──────────────────────────────────────────
@@ -136,25 +136,27 @@ hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(vars.btop))
 bindSuper(vars.mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(vars.print))
 bindSuper(vars.mainMod .. " + SHIFT + D", hl.dsp.exec_cmd(vars.record))
 
--- ── Volume/Microfone (SUPER + setas) ────────────────────────
-bindSuper(vars.mainMod .. " + Up", hl.dsp.exec_cmd(vars.soundUp))
-bindSuper(vars.mainMod .. " + Down", hl.dsp.exec_cmd(vars.soundDown))
-bindSuper(vars.mainMod .. " + Left", hl.dsp.exec_cmd(vars.changeSoundOutput))
+-- ── Spotifast (SUPER + setas / espaço) ─────────────────────
+bindSuper(vars.mainMod .. " + Up", hl.dsp.exec_cmd(vars.spotifastVolumeUp))
+bindSuper(vars.mainMod .. " + Down", hl.dsp.exec_cmd(vars.spotifastVolumeDown))
+bindSuper(vars.mainMod .. " + Left", hl.dsp.exec_cmd(vars.spotifastPrevious))
+bindSuper(vars.mainMod .. " + Right", hl.dsp.exec_cmd(vars.spotifastNext))
+bindSuper(vars.mainMod .. " + space", hl.dsp.exec_cmd(vars.spotifastPlayPause))
 
 bindSuper(vars.mainMod .. " + Delete", hl.dsp.exec_cmd(vars.muteUnmute))
 
 -- ── Teclas de mídia (teclado) ─────────────────────
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, repeating = true })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"), { locked = true, repeating = true })
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(vars.audioVolumeUp), { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(vars.audioVolumeDown), { locked = true, repeating = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd(vars.audioMuteToggle), { locked = true, repeating = true })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(vars.microphoneMuteToggle), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(vars.brightnessUp), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(vars.brightnessDown), { locked = true, repeating = true })
 
-hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
-hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
+hl.bind("XF86AudioNext", hl.dsp.exec_cmd(vars.mediaNext), { locked = true })
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd(vars.mediaPlayPause), { locked = true })
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd(vars.mediaPlayPause), { locked = true })
+hl.bind("XF86AudioPrev", hl.dsp.exec_cmd(vars.mediaPrevious), { locked = true })
 
 -- ── Workspaces ────────────────────────────────────
 bindSuper(vars.mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }))

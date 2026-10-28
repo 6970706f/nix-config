@@ -21,6 +21,9 @@ Scope {
 
     property string networkIcon: "󰖪"
     property bool recording: false
+    readonly property bool microphoneMuted: Pipewire.defaultAudioSource !== null
+        && Pipewire.defaultAudioSource.audio !== null
+        && Pipewire.defaultAudioSource.audio.muted
     property var appLauncherInstances: []
 
     readonly property var romanNumerals: ({
@@ -280,6 +283,36 @@ Scope {
                 }
             }
 
+            // Spotifast player component between workspaces and right-side modules.
+            MusicPlayer {
+                id: musicPlayerModule
+                anchors.left: workspaceModules.right
+                anchors.leftMargin: 18
+                anchors.right: rightModules.left
+                anchors.rightMargin: 18
+                anchors.verticalCenter: parent.verticalCenter
+                anchorWindow: barWindow
+                foregroundColor: root.foregroundColor
+                fontFamily: root.fontFamily
+
+                onCloseOtherPanelsRequested: {
+                    if (networkPanel.visible)
+                        networkPanel.closePanel();
+                    if (soundPanel.visible)
+                        soundPanel.closePanel();
+                    if (calendarPanel.visible)
+                        calendarPanel.closePanel();
+                    if (bluetoothPanel.visible)
+                        bluetoothPanel.closePanel();
+                    if (systemMonitorPanel.visible)
+                        systemMonitorPanel.closePanel();
+                    if (powerPanel.visible)
+                        powerPanel.closePanel();
+                    if (appLauncher.visible)
+                        appLauncher.closePanel();
+                }
+            }
+
             // Right section grouped by function: status, resources, connectivity, and controls.
             Row {
                 id: rightModules
@@ -290,26 +323,45 @@ Scope {
 
                 Row {
                     id: statusModules
+                    height: 22
                     spacing: 8
 
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.verticalCenterOffset: 0
-                        text: "󰝥"
-                        visible: root.recording
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: false
-                    }
-
+                    // The recording indicator has two fixed positions:
+                    // CPU-adjacent while the microphone is enabled, and the outer
+                    // slot while muted. The microphone uses the CPU-adjacent slot.
                     Item {
-                        width: microphoneLabel.implicitWidth
+                        id: recordingOuterSlot
+                        width: 12
                         height: 22
 
-                        visible: Pipewire.defaultAudioSource !== null
-                            && Pipewire.defaultAudioSource.audio !== null
-                            && Pipewire.defaultAudioSource.audio.muted
+                        Text {
+                            anchors.centerIn: parent
+                            text: "󰝥"
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 10
+                            font.bold: false
+                            opacity: root.recording && root.microphoneMuted ? 1 : 0
+                        }
+                    }
+
+                    // Keep this slot reserved so neither icon moves other modules.
+                    // Recording and microphone are mutually exclusive in this slot.
+                    Item {
+                        id: cpuAdjacentStatusSlot
+                        width: 16
+                        height: 22
+
+                        Text {
+                            id: recordingIndicatorModule
+                            anchors.centerIn: parent
+                            text: "󰝥"
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 10
+                            font.bold: false
+                            opacity: root.recording && !root.microphoneMuted ? 1 : 0
+                        }
 
                         Text {
                             id: microphoneLabel
@@ -319,27 +371,31 @@ Scope {
                             font.family: root.fontFamily
                             font.pixelSize: 13
                             font.bold: false
+                            opacity: root.microphoneMuted ? 1 : 0
                         }
                     }
                 }
 
                 Row {
                     id: resourceModules
-                    spacing: 10
+                    spacing: 8
 
                     Item {
                         id: cpuModule
-                        width: cpuLabel.implicitWidth + 6
+                        width: 56
                         height: 22
 
                         Text {
                             id: cpuLabel
-                            anchors.centerIn: parent
+                            anchors.fill: parent
+                            anchors.rightMargin: 3
                             text: "󰻠  " + systemMonitorPanel.cpuUsage + "%"
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
                             font.bold: false
+                            horizontalAlignment: Text.AlignRight
+                            verticalAlignment: Text.AlignVCenter
                         }
 
                         MouseArea {
@@ -368,17 +424,20 @@ Scope {
 
                     Item {
                         id: memoryModule
-                        width: memoryLabel.implicitWidth + 6
+                        width: 56
                         height: 22
 
                         Text {
                             id: memoryLabel
-                            anchors.centerIn: parent
+                            anchors.fill: parent
+                            anchors.rightMargin: 3
                             text: "󰍛  " + systemMonitorPanel.memoryUsage + "%"
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
                             font.bold: false
+                            horizontalAlignment: Text.AlignRight
+                            verticalAlignment: Text.AlignVCenter
                         }
 
                         MouseArea {
@@ -512,7 +571,7 @@ Scope {
 
                     Item {
                         id: audioModule
-                        width: audioContent.implicitWidth
+                        width: 50
                         height: 22
 
                         Row {
@@ -522,6 +581,7 @@ Scope {
 
                             Text {
                                 id: audioIcon
+                                width: 13
                                 text: {
                                     const sink = Pipewire.defaultAudioSink;
                                     if (!sink || !sink.audio)
@@ -532,10 +592,12 @@ Scope {
                                 font.family: root.fontFamily
                                 font.pixelSize: 13
                                 font.bold: false
+                                horizontalAlignment: Text.AlignHCenter
                             }
 
                             Text {
                                 id: audioValue
+                                width: 33
                                 text: {
                                     const sink = Pipewire.defaultAudioSink;
                                     if (!sink || !sink.audio)
@@ -544,11 +606,11 @@ Scope {
                                         return "";
                                     return Math.round(sink.audio.volume * 100) + "%";
                                 }
-                                visible: text.length > 0
                                 color: root.foregroundColor
                                 font.family: root.fontFamily
                                 font.pixelSize: 13
                                 font.bold: false
+                                horizontalAlignment: Text.AlignRight
                             }
                         }
 
@@ -594,17 +656,19 @@ Scope {
 
                     Item {
                         id: clockModule
-                        width: clockLabel.implicitWidth
+                        width: 60
                         height: 22
 
                         Text {
                             id: clockLabel
-                            anchors.centerIn: parent
+                            anchors.fill: parent
                             text: "󰥔  " + Qt.formatDateTime(systemClock.date, "HH:mm")
                             color: root.foregroundColor
                             font.family: root.fontFamily
                             font.pixelSize: 13
                             font.bold: false
+                            horizontalAlignment: Text.AlignRight
+                            verticalAlignment: Text.AlignVCenter
                         }
 
                         MouseArea {
@@ -682,41 +746,76 @@ Scope {
                 id: networkPanel
                 anchorWindow: barWindow
                 anchorItem: networkModule
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
             }
 
             SoundPanel {
                 id: soundPanel
                 anchorWindow: barWindow
                 anchorItem: audioModule
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
             }
 
             CalendarPanel {
                 id: calendarPanel
                 anchorWindow: barWindow
                 anchorItem: clockModule
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
             }
 
             PowerPanel {
                 id: powerPanel
                 anchorWindow: barWindow
                 anchorItem: powerModule
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
             }
 
             BluetoothPanel {
                 id: bluetoothPanel
                 anchorWindow: barWindow
                 anchorItem: bluetoothModule
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
             }
 
             SystemMonitorPanel {
                 id: systemMonitorPanel
                 anchorWindow: barWindow
                 anchorItem: cpuModule
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
             }
 
             AppLauncher {
                 id: appLauncher
                 anchorWindow: barWindow
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
 
                 Component.onCompleted: {
                     root.registerAppLauncher(appLauncher);

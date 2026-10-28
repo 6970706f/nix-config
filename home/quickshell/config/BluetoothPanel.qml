@@ -741,14 +741,29 @@ PopupWindow {
                 width: parent.width
                 height: 28
 
-                Text {
+                Row {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "󰂯  BLUETOOTH"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 15
-                    font.bold: false
+                    anchors.verticalCenterOffset: 2
+                    spacing: 6
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "󰂯"
+                        color: root.foregroundColor
+                        font.family: root.fontFamily
+                        font.pixelSize: 18
+                        font.bold: false
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "BLUETOOTH"
+                        color: root.foregroundColor
+                        font.family: root.fontFamily
+                        font.pixelSize: 16
+                        font.bold: false
+                    }
                 }
 
                 Row {
