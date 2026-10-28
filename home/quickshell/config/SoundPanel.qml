@@ -94,6 +94,32 @@ PopupWindow {
         return nodeProperty(node, "application.icon-name") || "audio-x-generic";
     }
 
+    // Only expose application playback streams here, never streams that capture
+    // microphone/input audio. Prefer PipeWire's explicit media.class metadata;
+    // use graph direction as a fallback for streams without that property.
+    function isApplicationOutputStream(node) {
+        if (!node || !node.ready || !node.isStream || !node.audio)
+            return false;
+
+        const mediaClass = nodeProperty(node, "media.class");
+        if (mediaClass === "Stream/Output/Audio")
+            return true;
+        if (mediaClass === "Stream/Input/Audio")
+            return false;
+
+        if (node.isSink)
+            return false;
+
+        const groups = Pipewire.linkGroups.values;
+        for (let i = 0; i < groups.length; i++) {
+            const group = groups[i];
+            if (group && group.source && group.source.id === node.id
+                && group.target && group.target.isSink)
+                return true;
+        }
+        return false;
+    }
+
     function outputForStream(node) {
         if (!node || !node.ready)
             return "Output: unavailable";
@@ -102,7 +128,8 @@ PopupWindow {
         const targets = [];
         for (let i = 0; i < groups.length; i++) {
             const group = groups[i];
-            if (!group || !group.source || group.source.id !== node.id || !group.target)
+            if (!group || !group.source || group.source.id !== node.id
+                || !group.target || !group.target.isSink)
                 continue;
             const targetName = nodeLabel(group.target);
             if (targets.indexOf(targetName) < 0)
@@ -150,7 +177,7 @@ PopupWindow {
         const nodes = Pipewire.nodes.values;
         for (let i = 0; i < nodes.length; i++) {
             const node = nodes[i];
-            if (node && node.ready && node.isStream && !node.isSink && node.audio)
+            if (root.isApplicationOutputStream(node))
                 result.push(node);
         }
         result.sort(function(a, b) {
