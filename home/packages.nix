@@ -54,6 +54,7 @@ in
     # Spotifast vem de um input do flake
     inputs.spotifast.packages.${pkgs.stdenv.hostPlatform.system}.default
     eog
+    yt-dlp
   ];
 }
 
