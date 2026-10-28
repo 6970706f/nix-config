@@ -1,7 +1,7 @@
 { pkgs, inputs, ... }:
 
 let
-  unstable = inputs.nixpkgs-unstable.legacyPackages.${pkgs.system};
+  unstable = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
 in
 
 {
@@ -53,6 +53,7 @@ in
 
     # Spotifast vem de um input do flake
     inputs.spotifast.packages.${pkgs.stdenv.hostPlatform.system}.default
+    eog
   ];
 }
 
