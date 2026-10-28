@@ -91,7 +91,7 @@ PopupWindow {
     }
 
     function applicationIconName(node) {
-        return nodeProperty(node, "application.icon-name") || "audio-x-generic";
+        return nodeProperty(node, "application.icon-name");
     }
 
     // Only expose application playback streams here, never streams that capture
@@ -838,8 +838,19 @@ PopupWindow {
                                     y: 7
                                     width: 18
                                     height: 18
-                                    source: Quickshell.iconPath(root.applicationIconName(modelData), "audio-x-generic")
+                                    source: Quickshell.iconPath(root.applicationIconName(modelData), true)
                                     asynchronous: true
+                                }
+
+                                Text {
+                                    anchors.fill: applicationIcon
+                                    text: ""
+                                    color: "#ffffff"
+                                    font.family: root.fontFamily
+                                    font.pixelSize: 12
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    visible: applicationIcon.status !== Image.Ready
                                 }
 
                                 Text {
