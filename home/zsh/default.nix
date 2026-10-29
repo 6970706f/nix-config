@@ -11,6 +11,8 @@
     shellAliases = {
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos#nixos";
       upgrade = "nix flake update --flake /etc/nixos";
+      espa = "source ~/.espressif/tools/activate_idf_v6.1.sh";
+      espd = "source ~/.espressif/tools/deactivate_idf_v6.1.sh";
     };
 
     history = {

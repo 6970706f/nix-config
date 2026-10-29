@@ -1,56 +1,5 @@
 {
   "nodes": {
-    "devShellC": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "path": "./devshells/c",
-        "type": "path"
-      },
-      "original": {
-        "path": "./devshells/c",
-        "type": "path"
-      },
-      "parent": []
-    },
-    "devShellESP32": {
-      "inputs": {
-        "espidf": "espidf",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "path": "./devshells/esp32-c",
-        "type": "path"
-      },
-      "original": {
-        "path": "./devshells/esp32-c",
-        "type": "path"
-      },
-      "parent": []
-    },
-    "espidf": {
-      "inputs": {
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "lastModified": 1790779005,
-        "narHash": "sha256-9k/9GHnFjkkiViqW3olmBlyJGcWbYohFSaVKv+Vvxbs=",
-        "owner": "hnaderi",
-        "repo": "espidf-nix",
-        "rev": "79f70365daf428432a27f940d4d511a7de50a084",
-        "type": "github"
-      },
-      "original": {
-        "owner": "hnaderi",
-        "repo": "espidf-nix",
-        "type": "github"
-      }
-    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -74,16 +23,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1789921291,
-        "narHash": "sha256-Ft/BRnIqw1MywFoXydKobjjWmDFgDdYtSpJliE8+yUw=",
+        "lastModified": 1793015021,
+        "narHash": "sha256-Ee5BWo8sh3pGt70QUdRajnaginqFmWvrtdBc4gJzhks=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "44a91898084f46797b5fac650c7e8c9ac38c43d4",
+        "rev": "718f670e845328e9c2cecdd832835712b2cbd065",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-unstable",
+        "ref": "nixos-26.05",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -106,22 +55,6 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1793015021,
-        "narHash": "sha256-Ee5BWo8sh3pGt70QUdRajnaginqFmWvrtdBc4gJzhks=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "718f670e845328e9c2cecdd832835712b2cbd065",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixos-26.05",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs_3": {
-      "locked": {
         "lastModified": 1787736819,
         "narHash": "sha256-cV5xEJJK3BvhU8rEd4mC9UsmDi5qscv/kzGPhBRC5WA=",
         "owner": "NixOS",
@@ -138,10 +71,8 @@
     },
     "root": {
       "inputs": {
-        "devShellC": "devShellC",
-        "devShellESP32": "devShellESP32",
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs_2",
+        "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "spotifast": "spotifast"
       }
@@ -169,7 +100,7 @@
     },
     "spotifast": {
       "inputs": {
-        "nixpkgs": "nixpkgs_3",
+        "nixpkgs": "nixpkgs_2",
         "rust-overlay": "rust-overlay"
       },
       "locked": {

@@ -20,6 +20,11 @@ Scope {
     readonly property int barGroupSpacing: 12
 
     property string networkIcon: "󰖪"
+    property bool batteryAvailable: false
+    property int batteryPercent: 0
+    property string batteryStatus: "Unknown"
+    property string batteryModel: "Battery"
+    property string batteryIcon: "󰂑"
     property bool recording: false
     readonly property bool microphoneMuted: Pipewire.defaultAudioSource !== null
         && Pipewire.defaultAudioSource.audio !== null
@@ -138,6 +143,51 @@ Scope {
 
         stdout: StdioCollector {
             onStreamFinished: root.recording = this.text.trim() === "recording"
+        }
+    }
+
+    // A battery module is present only when Linux exposes a battery power supply.
+    Process {
+        id: batteryProcess
+        command: ["sh", "-c", `
+            for battery in /sys/class/power_supply/*; do
+                [ -r "$battery/type" ] || continue
+                [ "$(cat "$battery/type")" = "Battery" ] || continue
+                capacity=$(cat "$battery/capacity" 2>/dev/null || printf 0)
+                status=$(cat "$battery/status" 2>/dev/null || printf Unknown)
+                model=$(cat "$battery/model_name" 2>/dev/null || basename "$battery")
+                printf '%s|%s|%s\\n' "$capacity" "$status" "$model"
+                exit
+            done
+        `]
+        running: true
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const fields = this.text.trim().split("|");
+                root.batteryAvailable = fields.length >= 3 && fields[0].length > 0;
+                if (root.batteryAvailable) {
+                    root.batteryPercent = Math.max(0, Math.min(100, parseInt(fields[0]) || 0));
+                    root.batteryStatus = fields[1] || "Unknown";
+                    root.batteryModel = fields[2] || "Battery";
+                    root.batteryIcon = root.batteryStatus === "Charging" ? "󰂄"
+                        : (root.batteryPercent >= 90 ? "󰁹"
+                        : (root.batteryPercent >= 70 ? "󰂀"
+                        : (root.batteryPercent >= 50 ? "󰁾"
+                        : (root.batteryPercent >= 30 ? "󰁼"
+                        : (root.batteryPercent >= 10 ? "󰁺" : "󰂎")))));
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 30000
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!batteryProcess.running)
+                batteryProcess.running = true;
         }
     }
 
@@ -463,6 +513,40 @@ Scope {
                             }
                         }
                     }
+
+                    Item {
+                        id: batteryModule
+                        visible: root.batteryAvailable
+                        width: visible ? batteryLabel.implicitWidth + 6 : 0
+                        height: 22
+
+                        Text {
+                            id: batteryLabel
+                            anchors.centerIn: parent
+                            text: root.batteryIcon + "  " + root.batteryPercent + "%"
+                            color: root.foregroundColor
+                            font.family: root.fontFamily
+                            font.pixelSize: 13
+                            font.bold: false
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (networkPanel.visible) networkPanel.closePanel();
+                                if (soundPanel.visible) soundPanel.closePanel();
+                                if (calendarPanel.visible) calendarPanel.closePanel();
+                                if (bluetoothPanel.visible) bluetoothPanel.closePanel();
+                                if (systemMonitorPanel.visible) systemMonitorPanel.closePanel();
+                                if (appLauncher.visible) appLauncher.closePanel();
+                                if (powerPanel.visible) powerPanel.closePanel();
+                                batteryPanel.togglePanel();
+                            }
+                        }
+                    }
                 }
 
                 Rectangle {
@@ -779,6 +863,20 @@ Scope {
                 id: powerPanel
                 anchorWindow: barWindow
                 anchorItem: powerModule
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
+            }
+
+            BatteryPanel {
+                id: batteryPanel
+                anchorWindow: barWindow
+                anchorItem: batteryModule
+                batteryPercent: root.batteryPercent
+                batteryStatus: root.batteryStatus
+                batteryModel: root.batteryModel
 
                 onVisibleChanged: {
                     if (visible)

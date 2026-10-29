@@ -66,6 +66,11 @@
   programs.ydotool.enable = true;
   programs.virt-manager.enable = true;
 
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+  };
+
   services.flatpak.enable = true;
   services.gnome.gnome-keyring.enable = true;
 
