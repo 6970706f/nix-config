@@ -1,7 +1,12 @@
 { pkgs, inputs, ... }:
 
 let
-  unstable = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+  system = pkgs.stdenv.hostPlatform.system;
+
+  unstable = import inputs.nixpkgs-unstable {
+    inherit system;
+    config.allowUnfree = true;
+  };
 in
 
 {
@@ -9,7 +14,7 @@ in
     # Desenvolvimento e linha de comando
     git
     vim
-    vscode
+    unstable.vscode
     wget
     tree
     zip

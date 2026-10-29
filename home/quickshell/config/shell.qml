@@ -582,6 +582,7 @@ Scope {
                             Text {
                                 id: audioIcon
                                 width: 13
+                                height: 22
                                 text: {
                                     const sink = Pipewire.defaultAudioSink;
                                     if (!sink || !sink.audio)
@@ -593,11 +594,13 @@ Scope {
                                 font.pixelSize: 13
                                 font.bold: false
                                 horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
 
                             Text {
                                 id: audioValue
                                 width: 33
+                                height: 22
                                 text: {
                                     const sink = Pipewire.defaultAudioSink;
                                     if (!sink || !sink.audio)
@@ -611,6 +614,7 @@ Scope {
                                 font.pixelSize: 13
                                 font.bold: false
                                 horizontalAlignment: Text.AlignRight
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
 
