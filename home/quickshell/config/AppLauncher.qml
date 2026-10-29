@@ -39,7 +39,7 @@ PopupWindow {
 
     // Configure this template to switch the default search provider.
     // It must contain %s where the encoded query will be inserted.
-    property string searchEngineTemplate: "https://duckduckgo.com/?q=%s"
+    property string searchEngineTemplate: "https://www.google.com/search?q=%s"
     readonly property string homeDirectory: String(Quickshell.env("HOME") || "")
     // Index only visible, useful directories. Do not scan the entire HOME directory,
     // or hidden folders; each root has a result limit to prevent
@@ -740,6 +740,13 @@ PopupWindow {
                 command: command,
                 workingDirectory: root.homeDirectory
             });
+            if (!root.commandRunsDirectly(root.pendingCommandArgs)) {
+                // Hyprland initially places Kitty under the pointer. Center this launcher terminal
+                // once its window exists; this only affects the terminal opened by `>`.
+                Quickshell.execDetached({
+                    command: ["sh", "-c", "sleep 0.25; hyprctl dispatch centerwindow"]
+                });
+            }
             root.commandConfirmationRequired = false;
             root.closePanel();
         } catch (error) {
@@ -750,7 +757,7 @@ PopupWindow {
 
     function buildSearchUrl(terms) {
         const encoded = encodeURIComponent(String(terms || "").trim());
-        const template = root.searchEngineTemplate || "https://duckduckgo.com/?q=%s";
+        const template = root.searchEngineTemplate || "https://www.google.com/search?q=%s";
         return template.indexOf("%s") >= 0
             ? template.replace("%s", encoded)
             : template + encoded;
