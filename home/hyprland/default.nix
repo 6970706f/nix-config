@@ -62,10 +62,6 @@
       source = ./config/scripts/print.sh;
       executable = true;
     };
-    "hypr/scripts/nextwallpaper.sh" = {
-      source = ./config/scripts/nextwallpaper.sh;
-      executable = true;
-    };
     "hypr/scripts/mute.sh" = {
       source = ./config/scripts/mute.sh;
       executable = true;

@@ -298,6 +298,10 @@ PopupWindow {
         return root.tryCalculate(query) !== null ? "calculator" : "search";
     }
 
+    // A dedicated gallery mode inside the launcher. Extra terms filter the library.
+    readonly property bool wallpaperMode: /^wall(?:\s|$)/i.test(root.searchQuery.trim())
+    readonly property string wallpaperFilterText: root.searchQuery.trim().replace(/^wall\s*/i, "").trim()
+
     readonly property var allApplicationsModelValues: root.allApplications
 
     function fileName(path) {
@@ -1169,6 +1173,11 @@ PopupWindow {
         root.launchError = "";
     }
 
+    onWallpaperFilterTextChanged: {
+        if (wallpaperSelectorLoader.item)
+            wallpaperSelectorLoader.item.filterText = root.wallpaperFilterText;
+    }
+
     onSearchResultsChanged: {
         if (root.searchResults.length === 0)
             root.selectedIndex = 0;
@@ -1317,22 +1326,40 @@ PopupWindow {
                     root.launchTopApplication(event.key - Qt.Key_1);
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    if (root.searchQuery.trim().length > 0)
+                    if (root.wallpaperMode && wallpaperSelectorLoader.item)
+                        wallpaperSelectorLoader.item.applySelected();
+                    else if (root.searchQuery.trim().length > 0)
                         root.launchResult(root.searchResults[root.selectedIndex]);
                     else
                         root.launchApplication(root.allApplications[root.selectedIndex]);
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Down) {
-                    const step = root.searchQuery.trim().length > 0
-                        ? 1
-                        : (allAppsGrid.width >= 850 ? 5 : (allAppsGrid.width >= 560 ? 3 : 2));
-                    root.moveSelection(step);
+                    if (root.wallpaperMode && wallpaperSelectorLoader.item)
+                        wallpaperSelectorLoader.item.moveSelection(wallpaperSelectorLoader.item.columns);
+                    else {
+                        const step = root.searchQuery.trim().length > 0
+                            ? 1
+                            : (allAppsGrid.width >= 850 ? 5 : (allAppsGrid.width >= 560 ? 3 : 2));
+                        root.moveSelection(step);
+                    }
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Up) {
-                    const step = root.searchQuery.trim().length > 0
-                        ? 1
-                        : (allAppsGrid.width >= 850 ? 5 : (allAppsGrid.width >= 560 ? 3 : 2));
-                    root.moveSelection(-step);
+                    if (root.wallpaperMode && wallpaperSelectorLoader.item)
+                        wallpaperSelectorLoader.item.moveSelection(-wallpaperSelectorLoader.item.columns);
+                    else {
+                        const step = root.searchQuery.trim().length > 0
+                            ? 1
+                            : (allAppsGrid.width >= 850 ? 5 : (allAppsGrid.width >= 560 ? 3 : 2));
+                        root.moveSelection(-step);
+                    }
+                    event.accepted = true;
+                } else if (root.wallpaperMode && event.key === Qt.Key_Right) {
+                    if (wallpaperSelectorLoader.item)
+                        wallpaperSelectorLoader.item.moveSelection(1);
+                    event.accepted = true;
+                } else if (root.wallpaperMode && event.key === Qt.Key_Left) {
+                    if (wallpaperSelectorLoader.item)
+                        wallpaperSelectorLoader.item.moveSelection(-1);
                     event.accepted = true;
                 } else if (root.searchQuery.trim().length === 0 && event.key === Qt.Key_Right) {
                     root.moveSelection(1);
@@ -1349,7 +1376,7 @@ PopupWindow {
             anchors.left: searchInput.left
             anchors.right: searchInput.right
             anchors.verticalCenter: searchInput.verticalCenter
-            text: "Search apps, files, calculations, web (? ...) or commands (> ...)"
+            text: "Search apps, files, wall, calculations, web (? ...) or commands (> ...)"
             color: "#808080"
             font.family: root.fontFamily
             font.pixelSize: 15
@@ -1857,7 +1884,7 @@ PopupWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             height: 22
-            visible: root.searchQuery.trim().length > 0 && root.launchError.length === 0
+            visible: root.searchQuery.trim().length > 0 && !root.wallpaperMode && root.launchError.length === 0
 
             Text {
                 anchors.left: parent.left
@@ -1897,6 +1924,7 @@ PopupWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             visible: root.searchQuery.trim().length > 0
+                && !root.wallpaperMode
                 && root.searchResults.length > 0
                 && root.launchError.length === 0
             clip: true
@@ -2201,10 +2229,32 @@ PopupWindow {
             }
         }
 
+        Loader {
+            id: wallpaperSelectorLoader
+            anchors.fill: parent
+            z: 30
+            active: root.wallpaperMode
+            visible: active
+            source: "WallpaperSelector.qml"
+
+            onLoaded: {
+                if (item)
+                    item.filterText = root.wallpaperFilterText;
+            }
+        }
+
+        Connections {
+            target: wallpaperSelectorLoader.item
+            function onWallpaperApplied(path) {
+                root.closePanel();
+            }
+        }
+
         Column {
             anchors.centerIn: parent
             spacing: 8
             visible: root.searchQuery.trim().length > 0
+                && !root.wallpaperMode
                 && root.searchResults.length === 0
                 && root.launchError.length === 0
 
