@@ -41,7 +41,7 @@ Singleton {
     // Bar geometry. Tabs hang from the screen edge; exclusiveZone leaves the rest to gaps_out.
     readonly property int tabHeight: 38
     readonly property int barHeight: 44
-    readonly property int barExclusiveZone: 40
+    readonly property int barExclusiveZone: 38
 
     // Popups reserve room around the card for its shadow.
     readonly property int popupPadX: 18
