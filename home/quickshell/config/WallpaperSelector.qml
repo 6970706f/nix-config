@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Io
+import Quickshell.Widgets
 import QtQuick
 import QtQuick.Controls
 
@@ -8,7 +9,6 @@ Item {
 
     signal wallpaperApplied(string path)
 
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
     readonly property string homeDirectory: String(Quickshell.env("HOME") || "")
     readonly property string wallpaperDirectory: root.homeDirectory + "/Pictures/Wallpapers"
 
@@ -157,7 +157,7 @@ Item {
         });
         root.pendingIndex = fullIndex >= 0 ? fullIndex + 1 : root.selectedIndex + 1;
         root.pendingTotal = root.wallpapers.length;
-        root.statusMessage = "APPLYING WALLPAPER…";
+        root.statusMessage = "Applying wallpaper…";
         root.isApplying = true;
         applyProcess.running = true;
     }
@@ -166,7 +166,7 @@ Item {
         if (scanProcess.running)
             return;
         root.isLoading = true;
-        root.statusMessage = "SCANNING WALLPAPERS…";
+        root.statusMessage = "Scanning wallpapers…";
         scanProcess.running = true;
     }
 
@@ -218,7 +218,7 @@ Item {
         onExited: function(exitCode, exitStatus) {
             root.isApplying = false;
             if (exitCode === 0) {
-                root.statusMessage = "WALLPAPER APPLIED";
+                root.statusMessage = "Wallpaper applied";
                 root.wallpaperApplied(root.pendingPath);
             } else {
                 const details = String(applyErrors.text || applyOutput.text || "").trim();
@@ -236,99 +236,72 @@ Item {
         Item {
             id: header
             width: parent.width
-            height: 27
+            height: 32
 
-            Text {
+            Row {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: "WALLPAPER LIBRARY"
-                color: "#ffffff"
-                font.family: root.fontFamily
-                font.pixelSize: 12
-                font.letterSpacing: 1.0
+                spacing: 10
+
+                Rectangle {
+                    width: 32
+                    height: 32
+                    radius: 11
+                    color: Theme.tint(Theme.gold, 0.18)
+
+                    Icon {
+                        anchors.centerIn: parent
+                        text: Theme.icons.image
+                        color: Theme.gold
+                    }
+                }
+
+                UiText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Wallpapers"
+                    font.pixelSize: 16
+                    font.weight: Font.Bold
+                }
+
+                UiText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.isLoading
+                        ? "Scanning…"
+                        : root.filteredWallpapers.length + " of " + root.wallpapers.length
+                    color: Theme.subtle
+                    font.pixelSize: 11
+                }
             }
 
-            Rectangle {
+            SoftButton {
                 id: refreshButton
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                width: 68
-                height: 22
-                color: refreshMouse.containsMouse ? "#171717" : "#080808"
-                border.width: 1
-                border.color: "#454545"
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "↻ REFRESH"
-                    color: root.isLoading ? "#666666" : "#b8b8b8"
-                    font.family: root.fontFamily
-                    font.pixelSize: 9
-                }
-
-                MouseArea {
-                    id: refreshMouse
-                    anchors.fill: parent
-                    enabled: !root.isLoading
-                    hoverEnabled: true
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: root.refreshWallpapers()
-                }
+                label: "Refresh"
+                glyph: Theme.icons.refresh
+                fontSize: 11
+                enabled: !root.isLoading
+                onClicked: root.refreshWallpapers()
             }
-
-            Text {
-                anchors.right: refreshButton.left
-                anchors.rightMargin: 12
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.isLoading
-                    ? "SCANNING…"
-                    : root.filteredWallpapers.length + " / " + root.wallpapers.length + " IMAGES"
-                color: "#b8b8b8"
-                font.family: root.fontFamily
-                font.pixelSize: 10
-            }
-        }
-
-        Rectangle {
-            width: parent.width
-            height: 1
-            color: "#333333"
         }
 
         Row {
             id: body
             width: parent.width
-            height: Math.max(0, parent.height - header.height - footer.height - 31)
-            spacing: 14
+            height: Math.max(0, parent.height - header.height - footer.height - 20)
+            spacing: 16
 
             Item {
                 id: gridPane
-                width: Math.floor((body.width - body.spacing - 1) * 0.62)
+                width: Math.floor((body.width - body.spacing) * 0.62)
                 height: body.height
-
-                Text {
-                    id: gridTitle
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    text: root.filterText.trim().length > 0
-                        ? "MATCHING WALLPAPERS"
-                        : "AVAILABLE WALLPAPERS"
-                    color: "#b8b8b8"
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    font.letterSpacing: 0.6
-                }
 
                 GridView {
                     id: wallpaperGrid
-                    anchors.top: gridTitle.bottom
-                    anchors.topMargin: 9
-                    anchors.bottom: parent.bottom
-                    anchors.left: parent.left
-                    anchors.right: parent.right
+                    anchors.fill: parent
                     clip: true
                     cellWidth: 194
-                    cellHeight: 136
+                    cellHeight: 126
                     model: root.filteredWallpapers
                     currentIndex: root.selectedIndex
                     boundsBehavior: Flickable.StopAtBounds
@@ -339,65 +312,70 @@ Item {
                         required property var modelData
                         required property int index
 
+                        readonly property bool isSelected: index === root.selectedIndex
+
                         width: wallpaperGrid.cellWidth - 10
                         height: wallpaperGrid.cellHeight - 10
 
+                        // Gradient ring around the selected tile.
                         Rectangle {
                             anchors.fill: parent
-                            color: index === root.selectedIndex ? "#171717" : "#080808"
-                            border.width: 1
-                            border.color: index === root.selectedIndex ? "#ffffff" : "#343434"
-                        }
+                            radius: Theme.radiusTile + 3
+                            gradient: Theme.dusk
+                            opacity: wallpaperTile.isSelected ? 1 : 0
 
-                        Rectangle {
-                            width: 2
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            color: "#ffffff"
-                            visible: index === root.selectedIndex
-                        }
-
-                        Image {
-                            id: thumbnail
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.margins: 7
-                            height: 83
-                            source: root.fileUrl(wallpaperTile.modelData.path)
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            cache: true
-                            smooth: true
-
-                            Rectangle {
-                                anchors.fill: parent
-                                color: "#101010"
-                                visible: thumbnail.status !== Image.Ready
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: thumbnail.status === Image.Loading ? "LOADING" : "IMAGE"
-                                    color: "#777777"
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                }
+                            Behavior on opacity {
+                                NumberAnimation { duration: Theme.fast }
                             }
                         }
 
-                        Text {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            anchors.leftMargin: 8
-                            anchors.rightMargin: 8
-                            anchors.bottomMargin: 7
-                            text: wallpaperTile.modelData.name
-                            color: index === root.selectedIndex ? "#ffffff" : "#b8b8b8"
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                            elide: Text.ElideMiddle
+                        ClippingRectangle {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            radius: Theme.radiusTile
+                            color: Theme.surface
+
+                            Image {
+                                id: thumbnail
+                                anchors.fill: parent
+                                source: root.fileUrl(wallpaperTile.modelData.path)
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                cache: true
+                                smooth: true
+                            }
+
+                            Icon {
+                                anchors.centerIn: parent
+                                visible: thumbnail.status !== Image.Ready
+                                text: Theme.icons.image
+                                color: Theme.muted
+                                font.pixelSize: 22
+                            }
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: 34
+                                gradient: Gradient {
+                                    GradientStop { position: 0.0; color: Theme.tint(Theme.base, 0) }
+                                    GradientStop { position: 1.0; color: Theme.tint(Theme.base, 0.92) }
+                                }
+                            }
+
+                            UiText {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                anchors.bottomMargin: 6
+                                text: wallpaperTile.modelData.name
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideMiddle
+                            }
                         }
 
                         MouseArea {
@@ -417,28 +395,26 @@ Item {
                 Column {
                     anchors.centerIn: parent
                     width: parent.width - 30
-                    spacing: 8
+                    spacing: 6
                     visible: root.filteredWallpapers.length === 0
 
-                    Text {
+                    UiText {
                         width: parent.width
-                        text: root.isLoading ? "SCANNING WALLPAPERS" : "NO WALLPAPERS FOUND"
-                        color: "#ffffff"
-                        font.family: root.fontFamily
-                        font.pixelSize: 12
+                        text: root.isLoading ? "Scanning wallpapers" : "No wallpapers found"
+                        font.pixelSize: 15
+                        font.weight: Font.Bold
                         horizontalAlignment: Text.AlignHCenter
                     }
 
-                    Text {
+                    UiText {
                         width: parent.width
                         text: root.isLoading
                             ? "Reading ~/Pictures/Wallpapers"
                             : (root.filterText.trim().length > 0
                                 ? "Try another search term."
                                 : "Add images to ~/Pictures/Wallpapers and refresh.")
-                        color: "#888888"
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
+                        color: Theme.subtle
+                        font.pixelSize: 12
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.Wrap
                     }
@@ -446,125 +422,92 @@ Item {
             }
 
             Rectangle {
-                width: 1
-                height: body.height
-                color: "#333333"
-            }
-
-            Item {
                 id: previewPane
-                width: Math.max(0, body.width - gridPane.width - body.spacing - 1 - body.spacing)
+                width: Math.max(0, body.width - gridPane.width - body.spacing)
                 height: body.height
+                radius: 20
+                color: Theme.surface
 
-                Text {
-                    id: previewTitle
+                ClippingRectangle {
+                    id: previewFrame
                     anchors.top: parent.top
                     anchors.left: parent.left
-                    text: "PREVIEW"
-                    color: "#b8b8b8"
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    font.letterSpacing: 0.6
-                }
-
-                Rectangle {
-                    id: previewFrame
-                    anchors.top: previewTitle.bottom
-                    anchors.topMargin: 9
-                    anchors.left: parent.left
                     anchors.right: parent.right
-                    height: Math.min(parent.height * 0.70, width * 0.82)
-                    color: "#050505"
-                    border.width: 1
-                    border.color: "#444444"
-                    clip: true
+                    anchors.margins: 10
+                    height: Math.min(parent.height * 0.62, width * 0.72)
+                    radius: 14
+                    color: Theme.base
 
                     Image {
                         id: largePreview
                         anchors.fill: parent
-                        anchors.margins: 1
                         source: root.selectedWallpaper
                             ? root.fileUrl(root.selectedWallpaper.path)
                             : ""
-                        fillMode: Image.PreserveAspectFit
+                        fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         cache: true
                         smooth: true
                     }
 
-                    Text {
+                    UiText {
                         anchors.centerIn: parent
-                        text: root.selectedWallpaper ? "LOADING PREVIEW" : "SELECT A WALLPAPER"
-                        color: "#777777"
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
+                        text: root.selectedWallpaper ? "Loading preview" : "Select a wallpaper"
+                        color: Theme.subtle
+                        font.pixelSize: 12
                         visible: !root.selectedWallpaper || largePreview.status !== Image.Ready
                     }
                 }
 
-                Text {
+                UiText {
                     id: selectedName
                     anchors.top: previewFrame.bottom
-                    anchors.topMargin: 13
+                    anchors.topMargin: 12
                     anchors.left: parent.left
                     anchors.right: parent.right
+                    anchors.leftMargin: 14
+                    anchors.rightMargin: 14
                     text: root.selectedWallpaper ? root.selectedWallpaper.name : "No wallpaper selected"
-                    color: "#ffffff"
-                    font.family: root.fontFamily
-                    font.pixelSize: 12
+                    font.pixelSize: 14
+                    font.weight: Font.Bold
                     elide: Text.ElideMiddle
                 }
 
-                Text {
+                UiText {
                     id: selectedPath
                     anchors.top: selectedName.bottom
-                    anchors.topMargin: 5
-                    anchors.left: parent.left
-                    anchors.right: parent.right
+                    anchors.topMargin: 3
+                    anchors.left: selectedName.left
+                    anchors.right: selectedName.right
                     text: root.selectedWallpaper ? root.selectedWallpaper.path : root.wallpaperDirectory
-                    color: "#777777"
-                    font.family: root.fontFamily
-                    font.pixelSize: 9
+                    color: Theme.subtle
+                    font.pixelSize: 10
                     elide: Text.ElideMiddle
                 }
 
-                Rectangle {
+                SoftButton {
                     id: applyButton
-                    anchors.left: parent.left
-                    anchors.right: parent.right
                     anchors.top: selectedPath.bottom
-                    anchors.topMargin: 16
-                    height: 39
-                    color: root.selectedWallpaper && !root.isApplying ? "#ffffff" : "#171717"
-                    border.width: 1
-                    border.color: root.selectedWallpaper && !root.isApplying ? "#ffffff" : "#454545"
-                    opacity: root.selectedWallpaper && !root.isApplying ? 1.0 : 0.65
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: root.isApplying ? "APPLYING…" : "APPLY WALLPAPER  ↵"
-                        color: root.selectedWallpaper && !root.isApplying ? "#000000" : "#888888"
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        enabled: Boolean(root.selectedWallpaper) && !root.isApplying
-                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: root.applySelected()
-                    }
+                    anchors.topMargin: 14
+                    anchors.left: selectedName.left
+                    anchors.right: selectedName.right
+                    implicitHeight: 40
+                    label: root.isApplying ? "Applying…" : "Apply wallpaper"
+                    variant: "accent"
+                    accent: Theme.gold
+                    enabled: Boolean(root.selectedWallpaper) && !root.isApplying
+                    onClicked: root.applySelected()
                 }
 
-                Text {
+                UiText {
                     anchors.top: applyButton.bottom
-                    anchors.topMargin: 10
-                    anchors.left: parent.left
-                    anchors.right: parent.right
+                    anchors.topMargin: 8
+                    anchors.left: selectedName.left
+                    anchors.right: selectedName.right
                     text: root.statusMessage
-                    color: root.statusMessage === "WALLPAPER APPLIED" ? "#ffffff" : "#999999"
-                    font.family: root.fontFamily
-                    font.pixelSize: 9
+                    color: root.statusMessage === "Wallpaper applied" ? Theme.mint : Theme.subtle
+                    font.pixelSize: 11
+                    horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
                     maximumLineCount: 2
                     elide: Text.ElideRight
@@ -575,24 +518,22 @@ Item {
         Item {
             id: footer
             width: parent.width
-            height: 17
+            height: 16
 
-            Text {
+            UiText {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: "↑ ↓ MOVE  ·  ← → SELECT  ·  ENTER APPLY  ·  DOUBLE CLICK TO APPLY"
-                color: "#777777"
-                font.family: root.fontFamily
-                font.pixelSize: 9
+                text: "↑ ↓ ← → move  ·  Enter or double click to apply"
+                color: Theme.muted
+                font.pixelSize: 10
             }
 
-            Text {
+            UiText {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                text: "ESC CLOSE"
-                color: "#777777"
-                font.family: root.fontFamily
-                font.pixelSize: 9
+                text: "Esc closes"
+                color: Theme.muted
+                font.pixelSize: 10
             }
         }
     }

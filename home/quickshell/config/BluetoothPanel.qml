@@ -9,12 +9,6 @@ PopupWindow {
     property var anchorWindow: null
     property var anchorItem: null
 
-    readonly property color panelColor: "#000000"
-    readonly property color foregroundColor: "#ffffff"
-    readonly property color mutedColor: "#b8b8b8"
-    readonly property color borderColor: "#ffffff"
-    readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property string activeTab: "paired"
     property string selectedAdapterId: ""
@@ -65,25 +59,26 @@ PopupWindow {
     readonly property var pairedDevices: devicesForTab(true)
     readonly property var availableDevices: devicesForTab(false)
 
-    width: 390
-    height: 430
+    width: 410 + Theme.popupPadX * 2
+    height: 430 + Theme.popupPadY
     color: "transparent"
     visible: false
 
     // Native popup grab: dismiss automatically on outside click and release focus on close.
     anchor.window: root.anchorWindow
     anchor.rect.x: root.panelLeft
-    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 8 : 34
+    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height : 34
     grabFocus: true
 
     readonly property int panelLeft: {
         if (!root.anchorItem || !root.anchorWindow)
-            return 8;
+            return 0;
 
+        // Re-read the anchor on open: bar tabs shift as their content changes.
+        root.visible;
         const point = root.anchorItem.mapToItem(root.anchorWindow.contentItem, 0, 0);
-        const minimumX = root.anchorWindow.width >= root.width + 16 ? 8 : 0;
-        const maximumX = Math.max(minimumX, root.anchorWindow.width - root.width - minimumX);
-        return Math.max(minimumX, Math.min(
+        const maximumX = Math.max(0, root.anchorWindow.width - root.width);
+        return Math.max(0, Math.min(
             point.x + root.anchorItem.width / 2 - root.width / 2,
             maximumX
         ));
@@ -722,491 +717,247 @@ PopupWindow {
         onActivated: root.closePanel()
     }
 
-    Rectangle {
+    // Device type names double as comparison keys above, so only their display is softened.
+    function prettyType(device) {
+        const type = root.deviceTypeLabel(device);
+        return type.charAt(0) + type.slice(1).toLowerCase();
+    }
+
+    readonly property bool adapterOn: !!root.activeAdapter && root.activeAdapter.enabled
+
+    PanelSurface {
         id: outerBorder
-        focus: root.visible
-        anchors.fill: parent
-        color: root.panelColor
-        radius: 0
-        border.width: 1
-        border.color: root.borderColor
+        window: root
+        accent: Theme.iris
 
         Column {
             id: contentColumn
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 0
+            spacing: 10
 
-            Item {
-                width: parent.width
-                height: 28
+            PanelHeader {
+                glyph: root.adapterOn ? Theme.icons.bluetooth : Theme.icons.bluetoothOff
+                accent: Theme.iris
+                title: "Bluetooth"
+                subtitle: root.errorMessage.length > 0
+                    ? root.errorMessage
+                    : (root.statusMessage.length > 0
+                        ? root.statusMessage
+                        : (root.adapterStatus === "UNAVAILABLE"
+                            ? "Bluetooth service unavailable."
+                            : (root.adapterStatus === "OFF"
+                                ? "Bluetooth is disabled."
+                                : "Bluetooth ready.")))
 
-                Row {
-                    anchors.left: parent.left
+                SoftSwitch {
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.verticalCenterOffset: 2
-                    spacing: 6
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "󰂯"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 18
-                        font.bold: false
-                    }
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "BLUETOOTH"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 16
-                        font.bold: false
-                    }
-                }
-
-                Row {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 7
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.adapterStatus
-                        color: root.adapterStatus === "ON" ? root.foregroundColor : root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: false
-                    }
-
-                    Rectangle {
-                        width: 84
-                        height: 24
-                        radius: 0
-                        color: powerMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                        border.width: 1
-                        border.color: "#373737"
-                        opacity: (!root.activeAdapter || root.busy || root.powerPending) ? 0.45 : 1
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.powerPending
-                                ? "WORKING..."
-                                : (root.activeAdapter && root.activeAdapter.enabled ? "POWER OFF" : "POWER ON")
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-
-                        MouseArea {
-                            id: powerMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            enabled: !!root.activeAdapter && !root.busy && !root.powerPending
-                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: root.togglePower()
-                        }
-                    }
+                    checked: root.powerPending ? root.powerTargetEnabled : root.adapterOn
+                    enabled: !!root.activeAdapter && !root.busy && !root.powerPending
+                    onClicked: root.togglePower()
                 }
             }
 
             Rectangle {
-                width: parent.width
-                height: 1
-                color: root.separatorColor
-            }
-
-            Item {
-                width: parent.width
-                height: root.adapterList.length > 1 ? 25 : 0
                 visible: root.adapterList.length > 1
+                width: parent.width
+                height: 40
+                radius: 14
+                color: Theme.surface
 
-                Text {
+                UiText {
                     anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    anchors.right: switchAdapterButton.left
+                    anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 86
                     text: root.activeAdapter
-                        ? "ADAPTER: " + root.activeAdapter.adapterId + " — " + root.activeAdapter.name
-                        : "ADAPTER: unavailable"
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
+                        ? root.activeAdapter.adapterId + " — " + root.activeAdapter.name
+                        : "Adapter unavailable"
+                    color: Theme.subtle
+                    font.pixelSize: 11
                     elide: Text.ElideRight
                 }
 
-                Rectangle {
+                SoftButton {
+                    id: switchAdapterButton
                     anchors.right: parent.right
+                    anchors.rightMargin: 4
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 78
-                    height: 22
-                    radius: 0
-                    color: switchAdapterMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                    border.width: 1
-                    border.color: "#373737"
-                    opacity: root.busy || root.powerPending ? 0.45 : 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "SWITCH"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                    MouseArea {
-                        id: switchAdapterMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: !root.busy && !root.powerPending
-                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: root.switchAdapter()
-                    }
+                    label: "Switch"
+                    glyph: Theme.icons.swap
+                    fontSize: 11
+                    enabled: !root.busy && !root.powerPending
+                    onClicked: root.switchAdapter()
                 }
             }
 
-            Rectangle {
-                width: parent.width
-                height: root.adapterList.length > 1 ? 1 : 0
-                color: root.separatorColor
-            }
-
-            Row {
+            SegmentTabs {
                 id: tabBar
-                width: parent.width
-                height: 30
-
-                Rectangle {
-                    width: parent.width / 2
-                    height: parent.height
-                    color: root.activeTab === "paired"
-                        ? "#111111"
-                        : (pairedTabMouse.containsMouse ? "#080808" : "transparent")
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "PAIRED"
-                        color: root.activeTab === "paired" ? root.foregroundColor : root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                        font.bold: false
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: root.activeTab === "paired" ? 2 : 1
-                        color: root.activeTab === "paired" ? "#ffffff" : "#303030"
-                    }
-
-                    MouseArea {
-                        id: pairedTabMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.activeTab = "paired";
-                            root.confirmForgetAddress = "";
-                        }
-                    }
-                }
-
-                Rectangle {
-                    width: parent.width / 2
-                    height: parent.height
-                    color: root.activeTab === "available"
-                        ? "#111111"
-                        : (availableTabMouse.containsMouse ? "#080808" : "transparent")
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "AVAILABLE"
-                        color: root.activeTab === "available" ? root.foregroundColor : root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                        font.bold: false
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: root.activeTab === "available" ? 2 : 1
-                        color: root.activeTab === "available" ? "#ffffff" : "#303030"
-                    }
-
-                    MouseArea {
-                        id: availableTabMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.activeTab = "available";
-                            root.confirmForgetAddress = "";
-                        }
-                    }
+                current: root.activeTab
+                tabs: [
+                    { key: "paired", label: "Paired" },
+                    { key: "available", label: "Available" }
+                ]
+                onPicked: function(key) {
+                    root.activeTab = key;
+                    root.confirmForgetAddress = "";
                 }
             }
 
             Item {
-                width: parent.width
-                height: root.activeTab === "available" ? 30 : 0
                 visible: root.activeTab === "available"
+                width: parent.width
+                height: 32
 
-                Text {
+                UiText {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.activeAdapter && root.activeAdapter.discovering
-                        ? "SCANNING..."
-                        : "AVAILABLE DEVICES"
-                    color: root.activeAdapter && root.activeAdapter.discovering
-                        ? root.foregroundColor
-                        : root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    font.bold: false
+                        ? "Scanning…"
+                        : "Available devices"
+                    color: root.activeAdapter && root.activeAdapter.discovering ? Theme.iris : Theme.subtle
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
                 }
 
-                Rectangle {
+                SoftButton {
                     anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 76
-                    height: 23
-                    radius: 0
-                    color: scanMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                    border.width: 1
-                    border.color: "#373737"
-                    opacity: (!root.activeAdapter || !root.activeAdapter.enabled
-                        || root.activeAdapter.discovering || root.busy || root.powerPending) ? 0.45 : 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "SCAN"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                    MouseArea {
-                        id: scanMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: !!root.activeAdapter && root.activeAdapter.enabled
-                            && !root.activeAdapter.discovering && !root.busy && !root.powerPending
-                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: root.startScan()
-                    }
+                    label: "Scan"
+                    glyph: Theme.icons.refresh
+                    fontSize: 11
+                    enabled: !!root.activeAdapter && root.activeAdapter.enabled
+                        && !root.activeAdapter.discovering && !root.busy && !root.powerPending
+                    onClicked: root.startScan()
                 }
             }
 
             Item {
                 id: listContainer
                 width: parent.width
-                height: Math.max(140, root.height - 28 - 28 - 1
-                    - (root.adapterList.length > 1 ? 26 : 0)
-                    - 30 - (root.activeTab === "available" ? 30 : 0) - 1 - 28)
+                height: parent.height - 40 - tabBar.height - parent.spacing * 2
+                    - (root.adapterList.length > 1 ? 40 + parent.spacing : 0)
+                    - (root.activeTab === "available" ? 32 + parent.spacing : 0)
 
                 ListView {
                     id: pairedList
                     anchors.fill: parent
                     visible: root.activeTab === "paired"
                     clip: true
-                    spacing: 0
+                    spacing: 6
                     model: root.pairedDevices
 
-                    delegate: Item {
+                    delegate: Rectangle {
                         id: pairedDeviceRow
                         required property var modelData
                         readonly property var device: modelData
+                        readonly property bool isBusy: root.busy && root.busyAddress === device.address
+                        readonly property bool confirmingForget: root.confirmForgetAddress === device.address
 
                         width: ListView.view.width
-                        height: 66
+                        height: 58
+                        radius: Theme.radiusTile
+                        color: device.connected ? Theme.tint(Theme.iris, 0.14) : Theme.surface
 
-                        Text {
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            anchors.topMargin: 7
-                            text: root.deviceGlyph(pairedDeviceRow.device)
-                            color: pairedDeviceRow.device.connected ? root.foregroundColor : root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 16
-                        }
+                        Rectangle {
+                            id: pairedBadge
+                            x: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 36
+                            height: 36
+                            radius: 18
+                            color: pairedDeviceRow.device.connected ? Theme.iris : Theme.raised
 
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 24
-                            anchors.top: parent.top
-                            anchors.topMargin: 5
-                            width: Math.max(70, parent.width - 24
-                                - (root.confirmForgetAddress === pairedDeviceRow.device.address
-                                    ? 82 + 64 + 56 + 8
-                                    : (pairedDeviceRow.device.connected ? 82 : 66) + 60 + 8))
-                            text: root.deviceName(pairedDeviceRow.device)
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            font.bold: false
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 24
-                            anchors.top: parent.top
-                            anchors.topMargin: 23
-                            width: Math.max(70, parent.width - 24
-                                - (root.confirmForgetAddress === pairedDeviceRow.device.address
-                                    ? 82 + 64 + 56 + 8
-                                    : (pairedDeviceRow.device.connected ? 82 : 66) + 60 + 8))
-                            text: {
-                                const device = pairedDeviceRow.device;
-                                let detail = device.connected ? "CONNECTED" : "PAIRED";
-                                if (device.batteryAvailable)
-                                    detail += "  ·  " + Math.round(device.battery * 100) + "%";
-                                if (root.busy && root.busyAddress === device.address) {
-                                    if (root.busyAction === "connect")
-                                        detail = "CONNECTING...";
-                                    else if (root.busyAction === "disconnect")
-                                        detail = "DISCONNECTING...";
-                                    else if (root.busyAction === "forget")
-                                        detail = "REMOVING...";
-                                }
-                                return detail;
+                            Icon {
+                                anchors.centerIn: parent
+                                text: root.deviceGlyph(pairedDeviceRow.device)
+                                color: pairedDeviceRow.device.connected ? Theme.onAccent : Theme.subtle
+                                font.pixelSize: 18
                             }
-                            color: pairedDeviceRow.device.connected ? root.foregroundColor : root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
+                        }
+
+                        Column {
+                            anchors.left: pairedBadge.right
+                            anchors.leftMargin: 10
+                            anchors.right: pairedActions.left
+                            anchors.rightMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 1
+
+                            UiText {
+                                width: parent.width
+                                text: root.deviceName(pairedDeviceRow.device)
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                            }
+
+                            UiText {
+                                width: parent.width
+                                text: {
+                                    const device = pairedDeviceRow.device;
+                                    let detail = device.connected ? "Connected" : "Paired";
+                                    if (device.batteryAvailable)
+                                        detail += "  ·  " + Math.round(device.battery * 100) + "%";
+                                    if (pairedDeviceRow.isBusy) {
+                                        if (root.busyAction === "connect")
+                                            detail = "Connecting…";
+                                        else if (root.busyAction === "disconnect")
+                                            detail = "Disconnecting…";
+                                        else if (root.busyAction === "forget")
+                                            detail = "Removing…";
+                                    }
+                                    return detail;
+                                }
+                                color: pairedDeviceRow.device.connected ? Theme.iris : Theme.subtle
+                                font.pixelSize: 10
+                                elide: Text.ElideRight
+                            }
                         }
 
                         Row {
+                            id: pairedActions
                             anchors.right: parent.right
+                            anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 4
 
-                            Rectangle {
-                                width: pairedDeviceRow.device.connected ? 82 : 66
-                                height: 24
-                                radius: 0
-                                color: connectMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                                border.width: 1
-                                border.color: "#373737"
-                                opacity: root.busy || root.powerPending || !root.activeAdapter
-                                    || !root.activeAdapter.enabled ? 0.45 : 1
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: root.busy && root.busyAddress === pairedDeviceRow.device.address
-                                        ? (root.busyAction === "connect" ? "CONNECTING..." : "DISCONNECTING...")
-                                        : (pairedDeviceRow.device.connected ? "DISCONNECT" : "CONNECT")
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                }
-
-                                MouseArea {
-                                    id: connectMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    enabled: !root.busy && !root.powerPending
-                                        && !!root.activeAdapter && root.activeAdapter.enabled
-                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                    onClicked: root.runDeviceAction(
-                                        pairedDeviceRow.device,
-                                        pairedDeviceRow.device.connected ? "disconnect" : "connect"
-                                    )
-                                }
+                            SoftButton {
+                                visible: !pairedDeviceRow.confirmingForget
+                                label: pairedDeviceRow.device.connected ? "Disconnect" : "Connect"
+                                variant: pairedDeviceRow.device.connected ? "tonal" : "accent"
+                                fontSize: 11
+                                enabled: !root.busy && !root.powerPending
+                                    && !!root.activeAdapter && root.activeAdapter.enabled
+                                onClicked: root.runDeviceAction(
+                                    pairedDeviceRow.device,
+                                    pairedDeviceRow.device.connected ? "disconnect" : "connect"
+                                )
                             }
 
-                            Rectangle {
-                                width: 60
-                                height: 24
-                                radius: 0
-                                color: forgetMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                                border.width: 1
-                                border.color: "#373737"
-                                opacity: root.busy || root.powerPending || !root.activeAdapter ? 0.45 : 1
-                                visible: root.confirmForgetAddress !== pairedDeviceRow.device.address
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "FORGET"
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                }
-
-                                MouseArea {
-                                    id: forgetMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    enabled: !root.busy && !root.powerPending && !!root.activeAdapter
-                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                    onClicked: root.requestForget(pairedDeviceRow.device)
-                                }
+                            SoftButton {
+                                visible: !pairedDeviceRow.confirmingForget
+                                glyph: Theme.icons.trash
+                                variant: "ghost"
+                                enabled: !root.busy && !root.powerPending && !!root.activeAdapter
+                                onClicked: root.requestForget(pairedDeviceRow.device)
                             }
 
-                            Rectangle {
-                                width: 64
-                                height: 24
-                                radius: 0
-                                color: confirmMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                                border.width: 1
-                                border.color: "#373737"
-                                visible: root.confirmForgetAddress === pairedDeviceRow.device.address
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "CONFIRM"
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                }
-
-                                MouseArea {
-                                    id: confirmMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    enabled: !root.busy && !root.powerPending && !!root.activeAdapter
-                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                    onClicked: root.runDeviceAction(pairedDeviceRow.device, "forget")
-                                }
+                            SoftButton {
+                                visible: pairedDeviceRow.confirmingForget
+                                label: "Forget"
+                                variant: "danger"
+                                fontSize: 11
+                                enabled: !root.busy && !root.powerPending && !!root.activeAdapter
+                                onClicked: root.runDeviceAction(pairedDeviceRow.device, "forget")
                             }
 
-                            Rectangle {
-                                width: 56
-                                height: 24
-                                radius: 0
-                                color: cancelForgetMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                                border.width: 1
-                                border.color: "#373737"
-                                visible: root.confirmForgetAddress === pairedDeviceRow.device.address
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "CANCEL"
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                }
-
-                                MouseArea {
-                                    id: cancelForgetMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.confirmForgetAddress = ""
-                                }
+                            SoftButton {
+                                visible: pairedDeviceRow.confirmingForget
+                                label: "Cancel"
+                                variant: "ghost"
+                                fontSize: 11
+                                onClicked: root.confirmForgetAddress = ""
                             }
-                        }
-
-                        Rectangle {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: 1
-                            color: root.separatorColor
                         }
                     }
                 }
@@ -1216,114 +967,90 @@ PopupWindow {
                     anchors.fill: parent
                     visible: root.activeTab === "available"
                     clip: true
-                    spacing: 0
+                    spacing: 6
                     model: root.availableDevices
 
-                    delegate: Item {
+                    delegate: Rectangle {
                         id: availableDeviceRow
                         required property var modelData
                         readonly property var device: modelData
+                        readonly property bool isPairing: device.pairing
+                            || (root.busy && root.busyAddress === device.address && root.busyAction === "pair")
 
                         width: ListView.view.width
-                        height: 62
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            anchors.topMargin: 7
-                            text: root.deviceGlyph(availableDeviceRow.device)
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 16
-                        }
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 24
-                            anchors.top: parent.top
-                            anchors.topMargin: 5
-                            width: parent.width - 112
-                            text: root.deviceName(availableDeviceRow.device)
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 24
-                            anchors.top: parent.top
-                            anchors.topMargin: 23
-                            width: parent.width - 118
-                            text: availableDeviceRow.device.pairing
-                                || (root.busy && root.busyAddress === availableDeviceRow.device.address
-                                    && root.busyAction === "pair")
-                                ? "PAIRING..."
-                                : root.deviceTypeLabel(availableDeviceRow.device)
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
-                        }
+                        height: 58
+                        radius: Theme.radiusTile
+                        color: Theme.surface
 
                         Rectangle {
-                            anchors.right: parent.right
+                            id: availableBadge
+                            x: 10
                             anchors.verticalCenter: parent.verticalCenter
-                            width: availableDeviceRow.device.pairing
-                                || (root.busy && root.busyAddress === availableDeviceRow.device.address
-                                    && root.busyAction === "pair") ? 70 : 58
-                            height: 24
-                            radius: 0
-                            color: pairMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                            border.width: 1
-                            border.color: "#373737"
-                            opacity: root.busy || root.powerPending || !root.activeAdapter
-                                || !root.activeAdapter.enabled ? 0.45 : 1
+                            width: 36
+                            height: 36
+                            radius: 18
+                            color: Theme.raised
 
-                            Text {
+                            Icon {
                                 anchors.centerIn: parent
-                                text: availableDeviceRow.device.pairing
-                                    || (root.busy && root.busyAddress === availableDeviceRow.device.address
-                                        && root.busyAction === "pair")
-                                    ? "CANCEL"
-                                    : "PAIR"
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 9
-                            }
-
-                            MouseArea {
-                                id: pairMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: !root.powerPending
-                                    && !!root.activeAdapter && root.activeAdapter.enabled
-                                    && (!root.busy || (root.busyAction === "pair"
-                                        && root.busyAddress === availableDeviceRow.device.address))
-                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                onClicked: {
-                                    if (availableDeviceRow.device.pairing
-                                            || (root.busy && root.busyAction === "pair"
-                                                && root.busyAddress === availableDeviceRow.device.address))
-                                        root.cancelPairing(availableDeviceRow.device);
-                                    else
-                                        root.runDeviceAction(availableDeviceRow.device, "pair");
-                                }
+                                text: root.deviceGlyph(availableDeviceRow.device)
+                                color: Theme.subtle
+                                font.pixelSize: 18
                             }
                         }
 
-                        Rectangle {
-                            anchors.left: parent.left
+                        Column {
+                            anchors.left: availableBadge.right
+                            anchors.leftMargin: 10
+                            anchors.right: pairButton.left
+                            anchors.rightMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 1
+
+                            UiText {
+                                width: parent.width
+                                text: root.deviceName(availableDeviceRow.device)
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                            }
+
+                            UiText {
+                                width: parent.width
+                                text: availableDeviceRow.isPairing
+                                    ? "Pairing…"
+                                    : root.prettyType(availableDeviceRow.device)
+                                color: Theme.subtle
+                                font.pixelSize: 10
+                                elide: Text.ElideRight
+                            }
+                        }
+
+                        SoftButton {
+                            id: pairButton
                             anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: 1
-                            color: root.separatorColor
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: availableDeviceRow.isPairing ? "Cancel" : "Pair"
+                            variant: availableDeviceRow.isPairing ? "ghost" : "accent"
+                            fontSize: 11
+                            enabled: !root.powerPending
+                                && !!root.activeAdapter && root.activeAdapter.enabled
+                                && (!root.busy || (root.busyAction === "pair"
+                                    && root.busyAddress === availableDeviceRow.device.address))
+                            onClicked: {
+                                if (availableDeviceRow.device.pairing
+                                        || (root.busy && root.busyAction === "pair"
+                                            && root.busyAddress === availableDeviceRow.device.address))
+                                    root.cancelPairing(availableDeviceRow.device);
+                                else
+                                    root.runDeviceAction(availableDeviceRow.device, "pair");
+                            }
                         }
                     }
                 }
 
-                Text {
+                UiText {
                     anchors.centerIn: parent
                     width: parent.width - 20
                     horizontalAlignment: Text.AlignHCenter
@@ -1335,46 +1062,15 @@ PopupWindow {
                         if (root.activeTab === "paired")
                             return root.pairedDevices.length === 0 ? "No paired devices." : "";
                         if (root.activeAdapter.discovering)
-                            return "SCANNING FOR DEVICES...";
+                            return "Scanning for devices…";
                         return root.availableDevices.length === 0 ? "No devices found." : "";
                     }
                     visible: root.activeTab === "paired"
                         ? root.pairedDevices.length === 0
                         : root.availableDevices.length === 0
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
+                    color: Theme.subtle
+                    font.pixelSize: 12
                     wrapMode: Text.Wrap
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: root.separatorColor
-            }
-
-            Item {
-                width: parent.width
-                height: 28
-
-                Text {
-                    anchors.fill: parent
-                    text: root.errorMessage.length > 0
-                        ? root.errorMessage
-                        : (root.statusMessage.length > 0
-                            ? root.statusMessage
-                            : (root.adapterStatus === "UNAVAILABLE"
-                                ? "Bluetooth service unavailable."
-                                : (root.adapterStatus === "OFF"
-                                    ? "Bluetooth is disabled."
-                                    : "Bluetooth ready.")))
-                    color: root.errorMessage.length > 0 ? "#d4d4d4" : root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 9
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
-                    wrapMode: Text.NoWrap
                 }
             }
         }

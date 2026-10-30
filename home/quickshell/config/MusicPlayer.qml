@@ -1,15 +1,15 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import Quickshell.Widgets
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 
 Item {
     id: root
 
-    // Styling and window anchoring are supplied by the existing bar.
-    property color foregroundColor: "#ffffff"
-    property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
+    // Window anchoring is supplied by the existing bar.
     property var anchorWindow: null
 
     signal closeOtherPanelsRequested()
@@ -31,19 +31,19 @@ Item {
     readonly property bool isPlaying: root.spotifastPlayer !== null
         && root.spotifastPlayer.isPlaying
 
-    height: 24
-    clip: true
+    height: Theme.tabHeight
     visible: root.trackAvailable && width >= 130
 
-    readonly property int panelWidth: 352
+    readonly property int panelWidth: 376 + Theme.popupPadX * 2
     readonly property int panelLeft: {
         if (!root.anchorWindow)
-            return 8;
+            return 0;
 
+        // Re-read the anchor on open: bar tabs shift as their content changes.
+        playerPanel.visible;
         const point = barContent.mapToItem(root.anchorWindow.contentItem, 0, 0);
-        const minimumX = root.anchorWindow.width >= root.panelWidth + 16 ? 8 : 0;
-        const maximumX = Math.max(minimumX, root.anchorWindow.width - root.panelWidth - minimumX);
-        return Math.max(minimumX, Math.min(
+        const maximumX = Math.max(0, root.anchorWindow.width - root.panelWidth);
+        return Math.max(0, Math.min(
             point.x + barContent.width / 2 - root.panelWidth / 2,
             maximumX
         ));
@@ -164,117 +164,114 @@ Item {
 
     Item {
         id: barContent
-        anchors.centerIn: parent
-        width: Math.min(parent.width, 190)
+        anchors.left: parent.left
+        width: Math.min(parent.width, barTab.width)
         height: parent.height
-        opacity: barMouse.containsMouse ? 1 : 0.94
 
-        Behavior on opacity {
-            NumberAnimation { duration: 120 }
-        }
+        BarTab {
+            id: barTab
+            width: Math.min(barContent.parent.width, implicitWidth)
+            sidePadding: 4
+            spacing: 8
 
-        Row {
-            id: barContentRow
-            anchors.fill: parent
-            spacing: 7
-
-            Item {
-                id: equalizer
-                width: 11
-                height: 14
+            // The cover turns like a record while the track plays.
+            ClippingRectangle {
+                id: barCover
                 anchors.verticalCenter: parent.verticalCenter
+                width: 28
+                height: 28
+                radius: 14
+                color: Theme.raised
 
-                Item {
-                    id: equalizerBars
+                NumberAnimation on rotation {
+                    from: 0
+                    to: 360
+                    duration: 9000
+                    loops: Animation.Infinite
+                    running: root.trackAvailable
+                    paused: running && !root.isPlaying
+                }
+
+                Image {
+                    id: barCoverImage
                     anchors.fill: parent
+                    source: root.spotifastPlayer ? root.spotifastPlayer.trackArtUrl : ""
+                    asynchronous: true
+                    cache: true
+                    fillMode: Image.PreserveAspectCrop
+                    sourceSize.width: 64
+                    sourceSize.height: 64
+                    smooth: true
+                }
 
-                    Rectangle {
-                        id: equalizerBar1
-                        property real heightLevel: 4
-                        anchors.bottom: parent.bottom
-                        x: 0
-                        width: 2
-                        height: root.isPlaying ? heightLevel : 3
-                        color: root.foregroundColor
-
-                        SequentialAnimation {
-                            running: root.isPlaying
-                            loops: Animation.Infinite
-                            NumberAnimation { target: equalizerBar1; property: "heightLevel"; to: 11; duration: 260; easing.type: Easing.InOutSine }
-                            NumberAnimation { target: equalizerBar1; property: "heightLevel"; to: 4; duration: 330; easing.type: Easing.InOutSine }
-                        }
-                    }
-
-                    Rectangle {
-                        id: equalizerBar2
-                        property real heightLevel: 7
-                        anchors.bottom: parent.bottom
-                        x: 4
-                        width: 2
-                        height: root.isPlaying ? heightLevel : 3
-                        color: root.foregroundColor
-
-                        SequentialAnimation {
-                            running: root.isPlaying
-                            loops: Animation.Infinite
-                            NumberAnimation { target: equalizerBar2; property: "heightLevel"; to: 12; duration: 340; easing.type: Easing.InOutSine }
-                            NumberAnimation { target: equalizerBar2; property: "heightLevel"; to: 3; duration: 250; easing.type: Easing.InOutSine }
-                        }
-                    }
-
-                    Rectangle {
-                        id: equalizerBar3
-                        property real heightLevel: 5
-                        anchors.bottom: parent.bottom
-                        x: 8
-                        width: 2
-                        height: root.isPlaying ? heightLevel : 3
-                        color: root.foregroundColor
-
-                        SequentialAnimation {
-                            running: root.isPlaying
-                            loops: Animation.Infinite
-                            NumberAnimation { target: equalizerBar3; property: "heightLevel"; to: 9; duration: 220; easing.type: Easing.InOutSine }
-                            NumberAnimation { target: equalizerBar3; property: "heightLevel"; to: 4; duration: 310; easing.type: Easing.InOutSine }
-                        }
-                    }
+                Icon {
+                    anchors.centerIn: parent
+                    visible: barCoverImage.status !== Image.Ready
+                    text: Theme.icons.musicNote
+                    color: Theme.love
+                    font.pixelSize: 14
                 }
             }
 
             Column {
                 id: musicMetadata
-                width: Math.max(0, barContentRow.width - equalizer.width - barContentRow.spacing)
-                height: parent.height
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 0
+                width: Math.min(150, Math.max(musicTitleLabel.implicitWidth, musicArtistLabel.implicitWidth))
+                spacing: -1
 
-                Text {
+                UiText {
                     id: musicTitleLabel
                     width: parent.width
-                    height: 13
                     text: root.spotifastPlayer ? root.spotifastPlayer.trackTitle : ""
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 11
-                    font.bold: false
+                    font.pixelSize: 12
+                    font.weight: Font.DemiBold
                     elide: Text.ElideRight
                     maximumLineCount: 1
-                    verticalAlignment: Text.AlignVCenter
                 }
 
-                Text {
+                UiText {
                     id: musicArtistLabel
                     width: parent.width
-                    height: 11
                     text: root.spotifastPlayer ? root.spotifastPlayer.trackArtist : ""
-                    color: root.foregroundColor
-                    opacity: 0.72
-                    font.family: root.fontFamily
-                    font.pixelSize: 9
-                    font.bold: false
+                    color: Theme.subtle
+                    font.pixelSize: 10
                     elide: Text.ElideRight
                     maximumLineCount: 1
-                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            Item {
+                id: equalizer
+                anchors.verticalCenter: parent.verticalCenter
+                width: 14
+                height: 16
+
+                Repeater {
+                    model: [
+                        { x: 0, rest: 4, peak: 12, up: 260, down: 330 },
+                        { x: 5, rest: 7, peak: 15, up: 340, down: 250 },
+                        { x: 10, rest: 5, peak: 10, up: 220, down: 310 }
+                    ]
+
+                    delegate: Rectangle {
+                        id: equalizerBar
+                        required property var modelData
+                        property real heightLevel: modelData.rest
+
+                        anchors.bottom: parent.bottom
+                        x: modelData.x
+                        width: 3
+                        radius: 1.5
+                        height: root.isPlaying ? heightLevel : 3
+                        color: Theme.love
+
+                        SequentialAnimation {
+                            running: root.isPlaying
+                            loops: Animation.Infinite
+                            NumberAnimation { target: equalizerBar; property: "heightLevel"; to: equalizerBar.modelData.peak; duration: equalizerBar.modelData.up; easing.type: Easing.InOutSine }
+                            NumberAnimation { target: equalizerBar; property: "heightLevel"; to: equalizerBar.modelData.rest; duration: equalizerBar.modelData.down; easing.type: Easing.InOutSine }
+                        }
+                    }
                 }
             }
         }
@@ -292,14 +289,14 @@ Item {
     PopupWindow {
         id: playerPanel
         width: root.panelWidth
-        height: 244
+        height: 268 + Theme.popupPadY
         color: "transparent"
         visible: false
         grabFocus: true
 
         anchor.window: root.anchorWindow
         anchor.rect.x: root.panelLeft
-        anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 8 : 36
+        anchor.rect.y: root.anchorWindow ? root.anchorWindow.height : 36
 
         onVisibleChanged: {
             if (visible)
@@ -313,294 +310,231 @@ Item {
             onActivated: root.closePanel()
         }
 
-        Rectangle {
-            anchors.fill: parent
-            color: "#000000"
-            border.width: 1
-            border.color: "#ffffff"
-            radius: 0
+        PanelSurface {
+            id: playerSurface
+            window: playerPanel
+            accent: Theme.love
+            padding: 0
 
-            Column {
+            // The cover, blurred and darkened, tints the whole card.
+            ClippingRectangle {
                 anchors.fill: parent
-                anchors.margins: 12
-                spacing: 0
+                radius: Theme.radiusCard
+                color: "transparent"
 
-                Item {
-                    width: parent.width
-                    height: 24
+                Image {
+                    id: backdropSource
+                    anchors.fill: parent
+                    visible: false
+                    source: artworkImage.source
+                    asynchronous: true
+                    fillMode: Image.PreserveAspectCrop
+                    sourceSize.width: 128
+                    sourceSize.height: 128
+                }
 
-                    Text {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "󰝚  MUSIC"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 14
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.spotifastPlayer && root.spotifastPlayer.isPlaying ? "PLAYING" : "PAUSED"
-                        color: root.foregroundColor
-                        opacity: 0.7
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                    }
+                MultiEffect {
+                    anchors.fill: parent
+                    visible: backdropSource.status === Image.Ready
+                    source: backdropSource
+                    autoPaddingEnabled: false
+                    blurEnabled: true
+                    blurMax: 48
+                    blur: 1
+                    saturation: -1
+                    brightness: -0.1
                 }
 
                 Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: "#303030"
+                    anchors.fill: parent
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Theme.tint(Theme.base, 0.45) }
+                        GradientStop { position: 0.75; color: Theme.tint(Theme.base, 0.92) }
+                    }
                 }
+            }
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 16
+                spacing: 12
 
                 Row {
                     width: parent.width
-                    height: 104
-                    spacing: 12
+                    height: 112
+                    spacing: 14
 
-                    Rectangle {
+                    Item {
                         id: artworkFrame
-                        width: 88
-                        height: 88
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: "#111111"
-                        border.width: 1
-                        border.color: "#303030"
+                        width: 112
+                        height: 112
 
-                        Image {
-                            id: artworkImage
+                        RectangularShadow {
                             anchors.fill: parent
-                            source: root.spotifastPlayer ? root.spotifastPlayer.trackArtUrl : ""
-                            asynchronous: true
-                            cache: true
-                            fillMode: Image.PreserveAspectCrop
-                            smooth: true
-                            visible: status === Image.Ready
+                            radius: 20
+                            blur: 18
+                            offset.y: 6
+                            color: Qt.rgba(0, 0, 0, 0.5)
                         }
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: "󰎆"
-                            color: root.foregroundColor
-                            opacity: 0.55
-                            font.family: root.fontFamily
-                            font.pixelSize: 28
-                            visible: artworkImage.status !== Image.Ready
+                        ClippingRectangle {
+                            anchors.fill: parent
+                            radius: 20
+                            color: Theme.raised
+
+                            Image {
+                                id: artworkImage
+                                anchors.fill: parent
+                                source: root.spotifastPlayer ? root.spotifastPlayer.trackArtUrl : ""
+                                asynchronous: true
+                                cache: true
+                                fillMode: Image.PreserveAspectCrop
+                                smooth: true
+                                visible: status === Image.Ready
+                            }
+
+                            Icon {
+                                anchors.centerIn: parent
+                                text: Theme.icons.musicNote
+                                color: Theme.love
+                                font.pixelSize: 36
+                                visible: artworkImage.status !== Image.Ready
+                            }
                         }
                     }
 
                     Column {
                         width: parent.width - artworkFrame.width - parent.spacing
-                        height: parent.height
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 5
+                        spacing: 3
 
-                        Item { width: 1; height: 5 }
+                        UiText {
+                            text: root.spotifastPlayer && root.spotifastPlayer.isPlaying ? "Now playing" : "Paused"
+                            color: Theme.love
+                            font.pixelSize: 11
+                            font.weight: Font.Bold
+                        }
 
-                        Text {
+                        UiText {
                             width: parent.width
                             text: root.spotifastPlayer ? root.spotifastPlayer.trackTitle : ""
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
+                            font.family: Theme.displayFont
+                            font.pixelSize: 18
+                            font.weight: Font.Bold
                             elide: Text.ElideRight
                             maximumLineCount: 2
                             wrapMode: Text.Wrap
                         }
 
-                        Text {
+                        UiText {
                             width: parent.width
                             text: root.spotifastPlayer ? root.spotifastPlayer.trackArtist : ""
-                            color: root.foregroundColor
-                            opacity: 0.74
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             elide: Text.ElideRight
                             maximumLineCount: 1
                         }
 
-                        Text {
+                        UiText {
                             width: parent.width
                             text: root.spotifastPlayer ? root.spotifastPlayer.trackAlbum : ""
-                            color: root.foregroundColor
-                            opacity: 0.5
-                            font.family: root.fontFamily
-                            font.pixelSize: 9
+                            color: Theme.subtle
+                            font.pixelSize: 11
                             elide: Text.ElideRight
                             maximumLineCount: 1
                         }
                     }
                 }
 
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: "#303030"
-                }
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    height: 54
+                    spacing: 16
 
-                Item {
-                    width: parent.width
-                    height: 38
+                    SoftButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        implicitHeight: 40
+                        variant: "ghost"
+                        glyph: Theme.icons.previous
+                        fontSize: 18
+                        onClicked: root.runPrevious()
+                    }
 
-                    Row {
-                        anchors.centerIn: parent
-                        height: parent.height
-                        spacing: 8
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 54
+                        height: 54
+                        radius: 27
+                        gradient: Theme.dusk
+                        scale: playPauseMouse.pressed ? 0.92 : (playPauseMouse.containsMouse ? 1.05 : 1)
 
-                        Rectangle {
-                            width: 32
-                            height: 27
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: previousMouse.containsMouse ? "#1c1c1c" : "#080808"
-                            border.width: 1
-                            border.color: "#373737"
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "󰒮"
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 15
-                            }
-
-                            MouseArea {
-                                id: previousMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.runPrevious()
-                            }
+                        Behavior on scale {
+                            NumberAnimation { duration: Theme.fast; easing.type: Easing.OutBack }
                         }
 
-                        Rectangle {
-                            width: 40
-                            height: 29
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: playPauseMouse.containsMouse ? "#1c1c1c" : "#080808"
-                            border.width: 1
-                            border.color: "#ffffff"
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: root.spotifastPlayer && root.spotifastPlayer.isPlaying ? "󰏤" : "󰐊"
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 16
-                            }
-
-                            MouseArea {
-                                id: playPauseMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.runPlayPause()
-                            }
+                        Icon {
+                            anchors.centerIn: parent
+                            text: root.spotifastPlayer && root.spotifastPlayer.isPlaying
+                                ? Theme.icons.pause
+                                : Theme.icons.play
+                            color: Theme.onAccent
+                            font.pixelSize: 26
                         }
 
-                        Rectangle {
-                            width: 32
-                            height: 27
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: nextMouse.containsMouse ? "#1c1c1c" : "#080808"
-                            border.width: 1
-                            border.color: "#373737"
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "󰒭"
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 15
-                            }
-
-                            MouseArea {
-                                id: nextMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.runNext()
-                            }
+                        MouseArea {
+                            id: playPauseMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.runPlayPause()
                         }
                     }
-                }
 
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: "#303030"
+                    SoftButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        implicitHeight: 40
+                        variant: "ghost"
+                        glyph: Theme.icons.next
+                        fontSize: 18
+                        onClicked: root.runNext()
+                    }
                 }
 
                 Row {
                     width: parent.width
-                    height: 35
-                    spacing: 9
+                    height: 26
+                    spacing: 10
 
-                    Text {
-                        width: 43
-                        height: parent.height
-                        text: "󰕾 VOL"
-                        color: root.foregroundColor
-                        opacity: 0.85
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                        verticalAlignment: Text.AlignVCenter
+                    Icon {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: Theme.icons.volumeHigh
+                        color: Theme.love
                     }
 
-                    Slider {
+                    SoftSlider {
                         id: volumeSlider
-                        width: parent.width - 43 - 42 - 18
-                        height: parent.height
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - 16 - 38 - parent.spacing * 2
                         from: 0
                         to: 100
                         stepSize: 1
+                        accent: Theme.love
                         value: root.volumePercent
                         onMoved: root.volumePercent = Math.round(value)
                         onPressedChanged: {
                             if (!pressed)
                                 root.applyVolume(value);
                         }
-
-                        background: Rectangle {
-                            x: volumeSlider.leftPadding
-                            y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                            width: volumeSlider.availableWidth
-                            height: 3
-                            color: "#303030"
-                            Rectangle {
-                                width: volumeSlider.visualPosition * parent.width
-                                height: parent.height
-                                color: "#ffffff"
-                            }
-                        }
-
-                        handle: Rectangle {
-                            x: volumeSlider.leftPadding
-                                + volumeSlider.visualPosition * (volumeSlider.availableWidth - width)
-                            y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                            width: 6
-                            height: 12
-                            radius: 0
-                            color: "#ffffff"
-                            border.width: 1
-                            border.color: "#ffffff"
-                        }
                     }
 
-                    Text {
+                    UiText {
+                        anchors.verticalCenter: parent.verticalCenter
                         width: 38
-                        height: parent.height
                         text: root.volumePercent + "%"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
                         horizontalAlignment: Text.AlignRight
-                        verticalAlignment: Text.AlignVCenter
                     }
                 }
-
-
             }
         }
     }

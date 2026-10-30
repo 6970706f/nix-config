@@ -10,30 +10,29 @@ PopupWindow {
     property string batteryStatus: "Unknown"
     property string batteryModel: "Battery"
 
-    readonly property color panelColor: "#000000"
-    readonly property color foregroundColor: "#ffffff"
-    readonly property color mutedColor: "#b8b8b8"
-    readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
+    readonly property color batteryAccent: root.batteryStatus === "Charging"
+        ? Theme.mint
+        : (root.batteryPercent <= 15 ? Theme.love : (root.batteryPercent <= 30 ? Theme.gold : Theme.mint))
 
-    width: 270
-    height: 174
+    width: 290 + Theme.popupPadX * 2
+    height: 186 + Theme.popupPadY
     color: "transparent"
     visible: false
 
     anchor.window: root.anchorWindow
     anchor.rect.x: root.panelLeft
-    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 8 : 34
+    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height : 34
     grabFocus: true
 
     readonly property int panelLeft: {
         if (!root.anchorItem || !root.anchorWindow)
-            return 8;
+            return 0;
 
+        // Re-read the anchor on open: bar tabs shift as their content changes.
+        root.visible;
         const point = root.anchorItem.mapToItem(root.anchorWindow.contentItem, 0, 0);
-        const minimumX = root.anchorWindow.width >= root.width + 16 ? 8 : 0;
-        const maximumX = Math.max(minimumX, root.anchorWindow.width - root.width - minimumX);
-        return Math.max(minimumX, Math.min(
+        const maximumX = Math.max(0, root.anchorWindow.width - root.width);
+        return Math.max(0, Math.min(
             point.x + root.anchorItem.width / 2 - root.width / 2,
             maximumX
         ));
@@ -53,87 +52,46 @@ PopupWindow {
         onActivated: root.closePanel()
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.panelColor
-        border.width: 1
-        border.color: root.foregroundColor
+    PanelSurface {
+        window: root
+        accent: root.batteryAccent
 
         Column {
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 8
+            spacing: 14
 
-            Row {
-                width: parent.width
-                height: 22
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "BATTERY"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 13
-                }
-
-                Text {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.batteryStatus.toUpperCase()
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: root.separatorColor
+            PanelHeader {
+                glyph: root.batteryStatus === "Charging" ? Theme.icons.batteryCharging : Theme.icons.battery
+                accent: root.batteryAccent
+                title: "Battery"
+                subtitle: root.batteryModel
             }
 
             Row {
-                width: parent.width
-                height: 36
-                spacing: 10
+                spacing: 8
 
-                Text {
-                    text: "󰁹"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 25
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                Text {
+                UiText {
+                    id: percentLabel
                     text: root.batteryPercent + "%"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 24
-                    anchors.verticalCenter: parent.verticalCenter
+                    font.family: Theme.displayFont
+                    font.pixelSize: 44
+                    font.weight: Font.Bold
+                }
+
+                UiText {
+                    anchors.baseline: percentLabel.baseline
+                    text: root.batteryStatus
+                    color: root.batteryAccent
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
                 }
             }
 
-            Rectangle {
+            MeterBar {
                 width: parent.width
-                height: 3
-                color: root.separatorColor
-
-                Rectangle {
-                    width: parent.width * root.batteryPercent / 100
-                    height: parent.height
-                    color: root.foregroundColor
-                }
-            }
-
-            Text {
-                width: parent.width
-                text: root.batteryModel
-                color: root.mutedColor
-                font.family: root.fontFamily
-                font.pixelSize: 11
-                elide: Text.ElideRight
+                height: 14
+                value: root.batteryPercent / 100
+                accent: root.batteryAccent
             }
         }
     }

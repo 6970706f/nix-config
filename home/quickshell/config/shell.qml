@@ -9,16 +9,6 @@ import QtQuick.Controls
 Scope {
     id: root
 
-    readonly property color backgroundColor: "#000000"
-    readonly property color foregroundColor: "#ffffff"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
-
-    // Bar: a single scale for height, margins, and spacing between groups.
-    readonly property int barHeight: 28
-    readonly property int barEdgeMargin: 24
-    readonly property int barModuleSpacing: 16
-    readonly property int barGroupSpacing: 12
-
     property string networkIcon: "󰖪"
     property bool batteryAvailable: false
     property int batteryPercent: 0
@@ -30,19 +20,6 @@ Scope {
         && Pipewire.defaultAudioSource.audio !== null
         && Pipewire.defaultAudioSource.audio.muted
     property var appLauncherInstances: []
-
-    readonly property var romanNumerals: ({
-        "1": "I",
-        "2": "II",
-        "3": "III",
-        "4": "IV",
-        "5": "V",
-        "6": "VI",
-        "7": "VII",
-        "8": "VIII",
-        "9": "IX",
-        "10": "X"
-    })
 
     function registerAppLauncher(instance) {
         const instances = root.appLauncherInstances.slice();
@@ -221,40 +198,49 @@ Scope {
                 right: true
             }
 
-            implicitHeight: root.barHeight
-            exclusiveZone: implicitHeight
-            color: root.backgroundColor
+            implicitHeight: Theme.barHeight
+            exclusiveZone: Theme.barExclusiveZone
+            color: "transparent"
 
-            margins {
-                top: 0
-                bottom: 1
-                left: 0
-                right: 0
-            }
-
-            // Left section: NixOS launcher.
-            Row {
-                id: leftModules
+            // Left tab: NixOS launcher and workspaces.
+            BarTab {
+                id: leftTab
                 anchors.left: parent.left
-                anchors.leftMargin: root.barEdgeMargin
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: root.barModuleSpacing
+                anchors.top: parent.top
+                sidePadding: 6
+                spacing: 10
 
                 Item {
-                    width: nixIcon.implicitWidth + 5
-                    height: 22
+                    id: launcherModule
+                    width: 30
+                    height: 30
 
-                    Text {
-                        id: nixIcon
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: ""
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 15
-                        font.bold: false
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 11
+                        gradient: Theme.dusk
+                        scale: launcherMouse.pressed ? 0.92 : (launcherMouse.containsMouse ? 1.06 : 1)
+
+                        Behavior on scale {
+                            NumberAnimation { duration: Theme.fast; easing.type: Easing.OutBack }
+                        }
+                    }
+
+                    // The snowflake has six-fold symmetry, so a 60 degree turn loops cleanly.
+                    Icon {
+                        anchors.centerIn: parent
+                        text: Theme.icons.nix
+                        color: Theme.onAccent
+                        font.pixelSize: 17
+                        rotation: launcherMouse.containsMouse ? 60 : 0
+
+                        Behavior on rotation {
+                            NumberAnimation { duration: 450; easing.type: Easing.OutCubic }
+                        }
                     }
 
                     MouseArea {
+                        id: launcherMouse
                         cursorShape: Qt.PointingHandCursor
                         anchors.fill: parent
                         hoverEnabled: true
@@ -276,74 +262,180 @@ Scope {
                         }
                     }
                 }
-            }
 
-            // Center section: existing workspaces, using Roman numerals.
-            Row {
-                id: workspaceModules
-                anchors.centerIn: parent
-                spacing: 2
+                // Occupied workspaces; the active one stretches into a gradient pill.
+                Row {
+                    id: workspaceModules
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
 
-                Repeater {
-                    model: Hyprland.workspaces
+                    Repeater {
+                        model: Hyprland.workspaces
 
-                    delegate: Item {
-                        id: workspaceItem
+                        delegate: Item {
+                            id: workspaceItem
 
-                        required property var modelData
-                        readonly property var targetMonitor: Hyprland.monitorFor(barWindow.screen)
+                            required property var modelData
+                            readonly property var targetMonitor: {
+                                settled;
+                                return Hyprland.monitorFor(barWindow.screen);
+                            }
+                            readonly property bool isActive: modelData.active
+                            readonly property bool isUrgent: modelData.urgent && !modelData.active
 
-                        visible: modelData.monitor !== null
-                            && modelData.monitor !== undefined
-                            && targetMonitor !== null
-                            && modelData.monitor.name === targetMonitor.name
-                            && (modelData.active || modelData.urgent || modelData.toplevels.values.length > 0)
-                        width: visible ? workspaceLabel.implicitWidth + 12 : 0
-                        height: 24
+                            // monitorFor() is not reactive and returns null for the first delegate on a
+                            // fresh start, which hid that workspace; look it up again once things settle.
+                            property bool settled: false
 
-                        Text {
-                            id: workspaceLabel
-                            anchors.centerIn: parent
-                            text: root.romanNumerals[String(workspaceItem.modelData.id)]
-                                || workspaceItem.modelData.name
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 12
-                            font.bold: false
-                        }
+                            Timer {
+                                running: true
+                                interval: 500
+                                onTriggered: workspaceItem.settled = true
+                            }
 
-                        Rectangle {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: 1
-                            color: workspaceItem.modelData.active || workspaceItem.modelData.urgent
-                                ? root.foregroundColor
-                                : "transparent"
-                        }
+                            visible: modelData.monitor !== null
+                                && modelData.monitor !== undefined
+                                && targetMonitor !== null
+                                && modelData.monitor.name === targetMonitor.name
+                                && (modelData.active || modelData.urgent || modelData.toplevels.values.length > 0)
+                            width: visible ? (isActive ? 42 : 26) : 0
+                            height: 26
 
-                        MouseArea {
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton
-                            onClicked: workspaceItem.modelData.activate()
+                            Behavior on width {
+                                NumberAnimation { duration: Theme.normal; easing.type: Easing.OutBack }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: height / 2
+                                color: workspaceItem.isUrgent
+                                    ? Theme.love
+                                    : (workspaceMouse.containsMouse ? Theme.hover : Theme.surface)
+
+                                Behavior on color {
+                                    ColorAnimation { duration: Theme.fast }
+                                }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: height / 2
+                                gradient: Theme.dusk
+                                opacity: workspaceItem.isActive ? 1 : 0
+
+                                Behavior on opacity {
+                                    NumberAnimation { duration: Theme.normal }
+                                }
+                            }
+
+                            UiText {
+                                anchors.centerIn: parent
+                                text: workspaceItem.modelData.name
+                                color: workspaceItem.isActive || workspaceItem.isUrgent
+                                    ? Theme.onAccent
+                                    : Theme.subtle
+                                font.pixelSize: 12
+                                font.weight: Font.Bold
+                            }
+
+                            MouseArea {
+                                id: workspaceMouse
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton
+                                onClicked: workspaceItem.modelData.activate()
+                            }
                         }
                     }
                 }
             }
 
-            // Spotifast player component between workspaces and right-side modules.
+            // Center tab: the clock stays on the screen's axis; music docks beside it.
+            BarTab {
+                id: clockTab
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                sidePadding: 8
+
+                Item {
+                    id: clockModule
+                    width: clockContent.implicitWidth + 20
+                    height: 30
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: height / 2
+                        color: clockMouse.containsMouse ? Theme.raised : "transparent"
+
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.fast }
+                        }
+                    }
+
+                    Row {
+                        id: clockContent
+                        anchors.centerIn: parent
+                        spacing: 9
+
+                        UiText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Qt.formatDateTime(systemClock.date, "HH:mm")
+                            font.family: Theme.displayFont
+                            font.pixelSize: 17
+                            font.weight: Font.Bold
+                        }
+
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 5
+                            height: 5
+                            radius: 2.5
+                            color: Theme.love
+                        }
+
+                        UiText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: systemClock.date.toLocaleDateString(Qt.locale("en_US"), "ddd, d MMM")
+                            color: Theme.subtle
+                            font.pixelSize: 12
+                        }
+                    }
+
+                    MouseArea {
+                        id: clockMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton
+                        onClicked: {
+                            if (networkPanel.visible)
+                                networkPanel.closePanel();
+                            if (soundPanel.visible)
+                                soundPanel.closePanel();
+                            if (bluetoothPanel.visible)
+                                bluetoothPanel.closePanel();
+                            if (systemMonitorPanel.visible)
+                                systemMonitorPanel.closePanel();
+                            if (appLauncher.visible)
+                                appLauncher.closePanel();
+                            if (powerPanel.visible)
+                                powerPanel.closePanel();
+                            calendarPanel.togglePanel();
+                        }
+                    }
+                }
+            }
+
+            // Spotifast player component between the clock and right-side modules.
             MusicPlayer {
                 id: musicPlayerModule
-                anchors.left: workspaceModules.right
-                anchors.leftMargin: 18
-                anchors.right: rightModules.left
-                anchors.rightMargin: 18
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: clockTab.right
+                anchors.leftMargin: 4
+                anchors.right: statusTab.left
+                anchors.rightMargin: 4
+                anchors.top: parent.top
                 anchorWindow: barWindow
-                foregroundColor: root.foregroundColor
-                fontFamily: root.fontFamily
 
                 onCloseOtherPanelsRequested: {
                     if (networkPanel.visible)
@@ -363,454 +455,249 @@ Scope {
                 }
             }
 
-            // Right section grouped by function: status, resources, connectivity, and controls.
-            Row {
-                id: rightModules
-                anchors.right: parent.right
-                anchors.rightMargin: root.barEdgeMargin
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: root.barGroupSpacing
+            // Right tab: alerts, resources, connectivity and audio.
+            BarTab {
+                id: statusTab
+                anchors.right: powerTab.left
+                anchors.rightMargin: 2
+                anchors.top: parent.top
+                sidePadding: 6
+                spacing: 6
 
+                // Only takes up room while there is something to warn about.
                 Row {
                     id: statusModules
-                    height: 22
-                    spacing: 8
-
-                    // The recording indicator has two fixed positions:
-                    // CPU-adjacent while the microphone is enabled, and the outer
-                    // slot while muted. The microphone uses the CPU-adjacent slot.
-                    Item {
-                        id: recordingOuterSlot
-                        width: 12
-                        height: 22
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "󰝥"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: false
-                            opacity: root.recording && root.microphoneMuted ? 1 : 0
-                        }
-                    }
-
-                    // Keep this slot reserved so neither icon moves other modules.
-                    // Recording and microphone are mutually exclusive in this slot.
-                    Item {
-                        id: cpuAdjacentStatusSlot
-                        width: 16
-                        height: 22
-
-                        Text {
-                            id: recordingIndicatorModule
-                            anchors.centerIn: parent
-                            text: "󰝥"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: false
-                            opacity: root.recording && !root.microphoneMuted ? 1 : 0
-                        }
-
-                        Text {
-                            id: microphoneLabel
-                            anchors.centerIn: parent
-                            text: "󰍭"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: false
-                            opacity: root.microphoneMuted ? 1 : 0
-                        }
-                    }
-                }
-
-                Row {
-                    id: resourceModules
-                    spacing: 8
-
-                    Item {
-                        id: cpuModule
-                        width: 56
-                        height: 22
-
-                        Text {
-                            id: cpuLabel
-                            anchors.fill: parent
-                            anchors.rightMargin: 3
-                            text: "󰻠  " + systemMonitorPanel.cpuUsage + "%"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: false
-                            horizontalAlignment: Text.AlignRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (networkPanel.visible)
-                                    networkPanel.closePanel();
-                                if (soundPanel.visible)
-                                    soundPanel.closePanel();
-                                if (calendarPanel.visible)
-                                    calendarPanel.closePanel();
-                                if (bluetoothPanel.visible)
-                                    bluetoothPanel.closePanel();
-                                if (appLauncher.visible)
-                                    appLauncher.closePanel();
-                                if (powerPanel.visible)
-                                    powerPanel.closePanel();
-                                systemMonitorPanel.anchorItem = cpuModule;
-                                systemMonitorPanel.togglePanel("cpu");
-                            }
-                        }
-                    }
-
-                    Item {
-                        id: memoryModule
-                        width: 56
-                        height: 22
-
-                        Text {
-                            id: memoryLabel
-                            anchors.fill: parent
-                            anchors.rightMargin: 3
-                            text: "󰍛  " + systemMonitorPanel.memoryUsage + "%"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: false
-                            horizontalAlignment: Text.AlignRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (networkPanel.visible)
-                                    networkPanel.closePanel();
-                                if (soundPanel.visible)
-                                    soundPanel.closePanel();
-                                if (calendarPanel.visible)
-                                    calendarPanel.closePanel();
-                                if (bluetoothPanel.visible)
-                                    bluetoothPanel.closePanel();
-                                if (appLauncher.visible)
-                                    appLauncher.closePanel();
-                                if (powerPanel.visible)
-                                    powerPanel.closePanel();
-                                systemMonitorPanel.anchorItem = memoryModule;
-                                systemMonitorPanel.togglePanel("memory");
-                            }
-                        }
-                    }
-
-                    Item {
-                        id: batteryModule
-                        visible: root.batteryAvailable
-                        width: visible ? batteryLabel.implicitWidth + 6 : 0
-                        height: 22
-
-                        Text {
-                            id: batteryLabel
-                            anchors.centerIn: parent
-                            text: root.batteryIcon + "  " + root.batteryPercent + "%"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: false
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (networkPanel.visible) networkPanel.closePanel();
-                                if (soundPanel.visible) soundPanel.closePanel();
-                                if (calendarPanel.visible) calendarPanel.closePanel();
-                                if (bluetoothPanel.visible) bluetoothPanel.closePanel();
-                                if (systemMonitorPanel.visible) systemMonitorPanel.closePanel();
-                                if (appLauncher.visible) appLauncher.closePanel();
-                                if (powerPanel.visible) powerPanel.closePanel();
-                                batteryPanel.togglePanel();
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    width: 1
-                    height: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    color: "#303030"
-                }
-
-                Row {
-                    id: connectivityModules
-                    spacing: 10
+                    visible: root.recording || root.microphoneMuted
+                    spacing: 6
 
                     Item {
-                        id: bluetoothModule
-                        width: bluetoothLabel.implicitWidth + 6
-                        height: 22
+                        id: recordingIndicatorModule
+                        visible: root.recording
+                        width: 22
+                        height: 28
 
-                        Text {
-                            id: bluetoothLabel
+                        Rectangle {
                             anchors.centerIn: parent
-                            text: !Bluetooth.defaultAdapter
-                                ? "󰂲"
-                                : (Bluetooth.defaultAdapter.enabled ? "󰂯" : "󰂲")
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: false
-                        }
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: Theme.love
 
-                        MouseArea {
-                            cursorShape: Qt.PointingHandCursor
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton
-                            onClicked: {
-                                if (networkPanel.visible)
-                                    networkPanel.closePanel();
-                                if (soundPanel.visible)
-                                    soundPanel.closePanel();
-                                if (calendarPanel.visible)
-                                    calendarPanel.closePanel();
-                                if (systemMonitorPanel.visible)
-                                    systemMonitorPanel.closePanel();
-                                if (appLauncher.visible)
-                                    appLauncher.closePanel();
-                                if (powerPanel.visible)
-                                    powerPanel.closePanel();
-                                bluetoothPanel.togglePanel();
-                            }
-                        }
-                    }
-
-                    Item {
-                        id: networkModule
-                        width: networkLabel.implicitWidth + 6
-                        height: 22
-
-                        Text {
-                            id: networkLabel
-                            anchors.centerIn: parent
-                            text: root.networkIcon
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: false
-                        }
-
-                        MouseArea {
-                            cursorShape: Qt.PointingHandCursor
-                            id: networkMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            onClicked: {
-                                if (mouse.button === Qt.LeftButton) {
-                                    if (soundPanel.visible)
-                                        soundPanel.closePanel();
-                                    if (calendarPanel.visible)
-                                        calendarPanel.closePanel();
-                                    if (bluetoothPanel.visible)
-                                        bluetoothPanel.closePanel();
-                                    if (systemMonitorPanel.visible)
-                                        systemMonitorPanel.closePanel();
-                                    if (appLauncher.visible)
-                                        appLauncher.closePanel();
-                                    if (powerPanel.visible)
-                                        powerPanel.closePanel();
-                                    networkPanel.togglePanel();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    width: 1
-                    height: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: "#303030"
-                }
-
-                Row {
-                    id: controlModules
-                    spacing: 12
-
-                    Item {
-                        id: audioModule
-                        width: 50
-                        height: 22
-
-                        Row {
-                            id: audioContent
-                            anchors.centerIn: parent
-                            spacing: 4
-
-                            Text {
-                                id: audioIcon
-                                width: 13
-                                text: {
-                                    const sink = Pipewire.defaultAudioSink;
-                                    if (!sink || !sink.audio)
-                                        return "";
-                                    return sink.audio.muted ? "" : "";
-                                }
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 13
-                                font.bold: false
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-
-                            Text {
-                                id: audioValue
-                                width: 33
-                                text: {
-                                    const sink = Pipewire.defaultAudioSink;
-                                    if (!sink || !sink.audio)
-                                        return "--%";
-                                    if (sink.audio.muted)
-                                        return "";
-                                    return Math.round(sink.audio.volume * 100) + "%";
-                                }
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 13
-                                font.bold: false
-                                horizontalAlignment: Text.AlignRight
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-
-                            onClicked: {
-                                const sink = Pipewire.defaultAudioSink;
-                                if (mouse.button === Qt.LeftButton) {
-                                    if (networkPanel.visible)
-                                        networkPanel.closePanel();
-                                    if (calendarPanel.visible)
-                                        calendarPanel.closePanel();
-                                    if (bluetoothPanel.visible)
-                                        bluetoothPanel.closePanel();
-                                    if (systemMonitorPanel.visible)
-                                        systemMonitorPanel.closePanel();
-                                    if (appLauncher.visible)
-                                        appLauncher.closePanel();
-                                    if (powerPanel.visible)
-                                        powerPanel.closePanel();
-                                    soundPanel.togglePanel();
-                                } else if ((mouse.button === Qt.RightButton
-                                            || mouse.button === Qt.MiddleButton) && sink && sink.audio) {
-                                    sink.audio.muted = !sink.audio.muted;
-                                }
-                            }
-
-                            onWheel: {
-                                const sink = Pipewire.defaultAudioSink;
-                                if (!sink || !sink.audio)
-                                    return;
-
-                                const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
-                                sink.audio.volume = Math.max(0, sink.audio.volume + step);
-                                wheel.accepted = true;
-                            }
-                        }
-                    }
-
-                    Item {
-                        id: clockModule
-                        width: 60
-                        height: 22
-
-                        Text {
-                            id: clockLabel
-                            anchors.fill: parent
-                            text: "󰥔  " + Qt.formatDateTime(systemClock.date, "HH:mm")
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: false
-                            horizontalAlignment: Text.AlignRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-
-                        MouseArea {
-                            id: clockMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            acceptedButtons: Qt.LeftButton
-                            onClicked: {
-                                if (networkPanel.visible)
-                                    networkPanel.closePanel();
-                                if (soundPanel.visible)
-                                    soundPanel.closePanel();
-                                if (bluetoothPanel.visible)
-                                    bluetoothPanel.closePanel();
-                                if (systemMonitorPanel.visible)
-                                    systemMonitorPanel.closePanel();
-                                if (appLauncher.visible)
-                                    appLauncher.closePanel();
-                                if (powerPanel.visible)
-                                    powerPanel.closePanel();
-                                calendarPanel.togglePanel();
+                            SequentialAnimation on opacity {
+                                running: root.recording
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
                             }
                         }
                     }
 
                     Rectangle {
-                        width: 1
-                        height: 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: "#303030"
+                        id: microphoneLabel
+                        visible: root.microphoneMuted
+                        width: 28
+                        height: 28
+                        radius: 14
+                        color: Theme.tint(Theme.love, 0.18)
+
+                        Icon {
+                            anchors.centerIn: parent
+                            text: Theme.icons.micOff
+                            color: Theme.love
+                            font.pixelSize: 15
+                        }
+                    }
+                }
+
+                BarGauge {
+                    id: cpuModule
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: Theme.icons.cpu
+                    percent: systemMonitorPanel.cpuUsage
+                    accent: Theme.iris
+                    onClicked: {
+                        if (networkPanel.visible)
+                            networkPanel.closePanel();
+                        if (soundPanel.visible)
+                            soundPanel.closePanel();
+                        if (calendarPanel.visible)
+                            calendarPanel.closePanel();
+                        if (bluetoothPanel.visible)
+                            bluetoothPanel.closePanel();
+                        if (appLauncher.visible)
+                            appLauncher.closePanel();
+                        if (powerPanel.visible)
+                            powerPanel.closePanel();
+                        systemMonitorPanel.anchorItem = cpuModule;
+                        systemMonitorPanel.togglePanel("cpu");
+                    }
+                }
+
+                BarGauge {
+                    id: memoryModule
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: Theme.icons.memory
+                    percent: systemMonitorPanel.memoryUsage
+                    accent: Theme.foam
+                    onClicked: {
+                        if (networkPanel.visible)
+                            networkPanel.closePanel();
+                        if (soundPanel.visible)
+                            soundPanel.closePanel();
+                        if (calendarPanel.visible)
+                            calendarPanel.closePanel();
+                        if (bluetoothPanel.visible)
+                            bluetoothPanel.closePanel();
+                        if (appLauncher.visible)
+                            appLauncher.closePanel();
+                        if (powerPanel.visible)
+                            powerPanel.closePanel();
+                        systemMonitorPanel.anchorItem = memoryModule;
+                        systemMonitorPanel.togglePanel("memory");
+                    }
+                }
+
+                BarGauge {
+                    id: batteryModule
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.batteryAvailable
+                    glyph: root.batteryIcon
+                    percent: root.batteryPercent
+                    accent: root.batteryPercent <= 15 ? Theme.love : Theme.mint
+                    onClicked: {
+                        if (networkPanel.visible) networkPanel.closePanel();
+                        if (soundPanel.visible) soundPanel.closePanel();
+                        if (calendarPanel.visible) calendarPanel.closePanel();
+                        if (bluetoothPanel.visible) bluetoothPanel.closePanel();
+                        if (systemMonitorPanel.visible) systemMonitorPanel.closePanel();
+                        if (appLauncher.visible) appLauncher.closePanel();
+                        if (powerPanel.visible) powerPanel.closePanel();
+                        batteryPanel.togglePanel();
+                    }
+                }
+
+                BarIconButton {
+                    id: bluetoothModule
+                    anchors.verticalCenter: parent.verticalCenter
+                    active: !!Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled
+                    glyph: active ? Theme.icons.bluetooth : Theme.icons.bluetoothOff
+                    accent: Theme.iris
+                    onClicked: {
+                        if (networkPanel.visible)
+                            networkPanel.closePanel();
+                        if (soundPanel.visible)
+                            soundPanel.closePanel();
+                        if (calendarPanel.visible)
+                            calendarPanel.closePanel();
+                        if (systemMonitorPanel.visible)
+                            systemMonitorPanel.closePanel();
+                        if (appLauncher.visible)
+                            appLauncher.closePanel();
+                        if (powerPanel.visible)
+                            powerPanel.closePanel();
+                        bluetoothPanel.togglePanel();
+                    }
+                }
+
+                BarIconButton {
+                    id: networkModule
+                    anchors.verticalCenter: parent.verticalCenter
+                    active: root.networkIcon !== "󰖪"
+                    glyph: root.networkIcon
+                    accent: Theme.foam
+                    onClicked: {
+                        if (soundPanel.visible)
+                            soundPanel.closePanel();
+                        if (calendarPanel.visible)
+                            calendarPanel.closePanel();
+                        if (bluetoothPanel.visible)
+                            bluetoothPanel.closePanel();
+                        if (systemMonitorPanel.visible)
+                            systemMonitorPanel.closePanel();
+                        if (appLauncher.visible)
+                            appLauncher.closePanel();
+                        if (powerPanel.visible)
+                            powerPanel.closePanel();
+                        networkPanel.togglePanel();
+                    }
+                }
+
+                Item {
+                    id: audioModule
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 108
+                    height: 28
+
+                    readonly property bool hasSink: !!Pipewire.defaultAudioSink && !!Pipewire.defaultAudioSink.audio
+                    readonly property bool isMuted: hasSink && Pipewire.defaultAudioSink.audio.muted
+                    readonly property real level: hasSink ? Pipewire.defaultAudioSink.audio.volume : 0
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: height / 2
+                        color: audioMouse.containsMouse ? Theme.raised : "transparent"
+
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.fast }
+                        }
                     }
 
-                    Item {
-                        id: powerModule
-                        width: powerLabel.implicitWidth + 6
-                        height: 22
+                    Icon {
+                        id: audioIcon
+                        x: 7
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 16
+                        text: audioModule.isMuted || !audioModule.hasSink
+                            ? Theme.icons.volumeOff
+                            : (audioModule.level < 0.5 ? Theme.icons.volumeMid : Theme.icons.volumeHigh)
+                        color: audioModule.isMuted ? Theme.muted : Theme.rose
+                        font.pixelSize: 15
+                    }
 
-                        Text {
-                            id: powerLabel
-                            anchors.centerIn: parent
-                            text: "⏻"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 13
-                            font.bold: false
+                    MeterBar {
+                        anchors.left: audioIcon.right
+                        anchors.leftMargin: 6
+                        anchors.right: audioValue.left
+                        anchors.rightMargin: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 6
+                        value: audioModule.isMuted ? 0 : audioModule.level
+                        accent: Theme.rose
+                    }
+
+                    UiText {
+                        id: audioValue
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 28
+                        horizontalAlignment: Text.AlignRight
+                        text: {
+                            const sink = Pipewire.defaultAudioSink;
+                            if (!sink || !sink.audio)
+                                return "--";
+                            if (sink.audio.muted)
+                                return "off";
+                            return Math.round(sink.audio.volume * 100) + "%";
                         }
+                        color: audioModule.isMuted ? Theme.muted : Theme.text
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                    }
 
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            acceptedButtons: Qt.LeftButton
-                            onClicked: {
+                    MouseArea {
+                        id: audioMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+
+                        onClicked: {
+                            const sink = Pipewire.defaultAudioSink;
+                            if (mouse.button === Qt.LeftButton) {
                                 if (networkPanel.visible)
                                     networkPanel.closePanel();
-                                if (soundPanel.visible)
-                                    soundPanel.closePanel();
                                 if (calendarPanel.visible)
                                     calendarPanel.closePanel();
                                 if (bluetoothPanel.visible)
@@ -819,9 +706,52 @@ Scope {
                                     systemMonitorPanel.closePanel();
                                 if (appLauncher.visible)
                                     appLauncher.closePanel();
-                                powerPanel.togglePanel();
+                                if (powerPanel.visible)
+                                    powerPanel.closePanel();
+                                soundPanel.togglePanel();
+                            } else if ((mouse.button === Qt.RightButton
+                                        || mouse.button === Qt.MiddleButton) && sink && sink.audio) {
+                                sink.audio.muted = !sink.audio.muted;
                             }
                         }
+
+                        onWheel: {
+                            const sink = Pipewire.defaultAudioSink;
+                            if (!sink || !sink.audio)
+                                return;
+
+                            const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
+                            sink.audio.volume = Math.max(0, sink.audio.volume + step);
+                            wheel.accepted = true;
+                        }
+                    }
+                }
+            }
+
+            BarTab {
+                id: powerTab
+                anchors.right: parent.right
+                anchors.top: parent.top
+                sidePadding: 4
+
+                BarIconButton {
+                    id: powerModule
+                    glyph: Theme.icons.power
+                    accent: Theme.love
+                    onClicked: {
+                        if (networkPanel.visible)
+                            networkPanel.closePanel();
+                        if (soundPanel.visible)
+                            soundPanel.closePanel();
+                        if (calendarPanel.visible)
+                            calendarPanel.closePanel();
+                        if (bluetoothPanel.visible)
+                            bluetoothPanel.closePanel();
+                        if (systemMonitorPanel.visible)
+                            systemMonitorPanel.closePanel();
+                        if (appLauncher.visible)
+                            appLauncher.closePanel();
+                        powerPanel.togglePanel();
                     }
                 }
             }

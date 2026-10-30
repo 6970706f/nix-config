@@ -10,34 +10,30 @@ PopupWindow {
     property var anchorWindow: null
     property var anchorItem: null
 
-    readonly property color panelColor: "#000000"
-    readonly property color foregroundColor: "#ffffff"
-    readonly property color mutedColor: "#b8b8b8"
-    readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property string activeTab: "output"
     property string statusMessage: ""
 
-    width: 390
-    height: activeTab === "applications" ? 470 : 420
+    width: 390 + Theme.popupPadX * 2
+    height: (activeTab === "applications" ? 470 : 430) + Theme.popupPadY
     color: "transparent"
     visible: false
 
     // Native popup grab: dismiss automatically on outside click and release focus on close.
     anchor.window: root.anchorWindow
     anchor.rect.x: root.panelLeft
-    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 8 : 34
+    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height : 34
     grabFocus: true
 
     readonly property int panelLeft: {
         if (!root.anchorItem || !root.anchorWindow)
-            return 8;
+            return 0;
 
+        // Re-read the anchor on open: bar tabs shift as their content changes.
+        root.visible;
         const point = root.anchorItem.mapToItem(root.anchorWindow.contentItem, 0, 0);
-        const minimumX = root.anchorWindow.width >= root.width + 16 ? 8 : 0;
-        const maximumX = Math.max(minimumX, root.anchorWindow.width - root.width - minimumX);
-        return Math.max(minimumX, Math.min(
+        const maximumX = Math.max(0, root.anchorWindow.width - root.width);
+        return Math.max(0, Math.min(
             point.x + root.anchorItem.width / 2 - root.width / 2,
             maximumX
         ));
@@ -205,810 +201,414 @@ PopupWindow {
         onActivated: root.closePanel()
     }
 
-    Rectangle {
+    // Output and input pages differ only in the node and device list they show.
+    component DevicePage: Column {
+        id: page
+
+        required property var node
+        required property var devices
+        property string currentLabel: ""
+        property string emptyNodeLabel: ""
+        property string listLabel: ""
+        property string emptyListLabel: ""
+        property string volumeGlyph: ""
+        property string mutedGlyph: ""
+
+        signal pick(var device)
+
+        readonly property bool ready: root.audioNodeReady(page.node)
+        readonly property bool muted: page.ready && page.node.audio.muted
+
+        spacing: 10
+
+        Rectangle {
+            width: parent.width
+            height: 108
+            radius: 18
+            color: Theme.surface
+
+            Icon {
+                id: heroIcon
+                x: 14
+                y: 14
+                width: 22
+                text: page.muted ? page.mutedGlyph : page.volumeGlyph
+                color: page.muted ? Theme.muted : Theme.rose
+                font.pixelSize: 20
+            }
+
+            Column {
+                anchors.left: heroIcon.right
+                anchors.leftMargin: 10
+                anchors.right: heroMute.left
+                anchors.rightMargin: 8
+                y: 10
+                spacing: 0
+
+                UiText {
+                    width: parent.width
+                    text: page.currentLabel
+                    color: Theme.subtle
+                    font.pixelSize: 10
+                }
+
+                UiText {
+                    width: parent.width
+                    text: page.ready
+                        ? root.nodeLabel(page.node)
+                        : (Pipewire.ready ? page.emptyNodeLabel : "Waiting for PipeWire...")
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+            }
+
+            SoftButton {
+                id: heroMute
+                anchors.right: parent.right
+                anchors.rightMargin: 10
+                y: 10
+                label: page.muted ? "Unmute" : "Mute"
+                variant: page.muted ? "danger" : "tonal"
+                fontSize: 11
+                enabled: page.ready
+                onClicked: {
+                    const node = page.node;
+                    if (root.audioNodeReady(node))
+                        node.audio.muted = !node.audio.muted;
+                }
+            }
+
+            UiText {
+                anchors.right: parent.right
+                anchors.rightMargin: 14
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 42
+                text: page.ready ? Math.round(page.node.audio.volume * 100) + "%" : "--%"
+                font.family: Theme.displayFont
+                font.pixelSize: 15
+                font.weight: Font.Bold
+            }
+
+            SoftSlider {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                anchors.bottomMargin: 12
+                from: 0
+                to: 1.5
+                stepSize: 0.01
+                accent: Theme.rose
+                enabled: page.ready
+                value: enabled ? page.node.audio.volume : 0
+                onMoved: {
+                    const node = page.node;
+                    if (root.audioNodeReady(node))
+                        node.audio.volume = value;
+                }
+            }
+        }
+
+        UiText {
+            height: 16
+            text: page.listLabel
+            color: Theme.subtle
+            font.pixelSize: 11
+            font.weight: Font.DemiBold
+        }
+
+        Item {
+            width: parent.width
+            height: Math.max(0, parent.height - 108 - 16 - parent.spacing * 2)
+
+            ListView {
+                id: deviceList
+                anchors.fill: parent
+                visible: page.devices.length > 0
+                clip: true
+                spacing: 4
+                model: page.devices
+
+                delegate: Rectangle {
+                    id: deviceRow
+                    required property var modelData
+                    width: deviceList.width
+                    height: 42
+                    radius: 14
+
+                    readonly property bool isDefault: page.node !== null
+                        && page.node !== undefined
+                        && page.node.id === modelData.id
+
+                    color: isDefault
+                        ? Theme.tint(Theme.rose, 0.16)
+                        : (deviceMouse.containsMouse ? Theme.surface : "transparent")
+
+                    Behavior on color {
+                        ColorAnimation { duration: Theme.fast }
+                    }
+
+                    Rectangle {
+                        id: radioDot
+                        x: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 18
+                        height: 18
+                        radius: 9
+                        color: deviceRow.isDefault ? Theme.rose : Theme.raised
+
+                        Icon {
+                            anchors.centerIn: parent
+                            visible: deviceRow.isDefault
+                            text: Theme.icons.check
+                            color: Theme.onAccent
+                            font.pixelSize: 12
+                        }
+                    }
+
+                    UiText {
+                        anchors.left: radioDot.right
+                        anchors.leftMargin: 10
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.nodeLabel(deviceRow.modelData)
+                        font.pixelSize: 12
+                        font.weight: deviceRow.isDefault ? Font.DemiBold : Font.Medium
+                        elide: Text.ElideRight
+                    }
+
+                    MouseArea {
+                        id: deviceMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            const node = deviceRow.modelData;
+                            if (root.audioNodeReady(node))
+                                page.pick(node);
+                        }
+                    }
+                }
+            }
+
+            UiText {
+                anchors.centerIn: parent
+                visible: page.devices.length === 0
+                text: !Pipewire.ready ? "Waiting for PipeWire..." : page.emptyListLabel
+                color: Theme.subtle
+                font.pixelSize: 12
+            }
+        }
+    }
+
+    PanelSurface {
         id: outerBorder
-        focus: root.visible
-        anchors.fill: parent
-        color: root.panelColor
-        radius: 0
-        border.width: 1
-        border.color: "#ffffff"
+        window: root
+        accent: Theme.rose
 
         Column {
             id: contentColumn
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 0
+            spacing: 12
 
-            Item {
-                width: parent.width
-                height: 28
+            PanelHeader {
+                glyph: Theme.icons.volumeHigh
+                accent: Theme.rose
+                title: "Sound"
+                subtitle: root.statusMessage.length > 0 ? root.statusMessage : "PipeWire audio controls"
 
-                Text {
-                    anchors.left: parent.left
+                UiText {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "󰕾  SOUND"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 15
-                    font.bold: false
-                }
-
-                Text {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.statusLabel
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    horizontalAlignment: Text.AlignRight
+                    text: root.statusLabel.charAt(0) + root.statusLabel.slice(1).toLowerCase()
+                    color: root.statusLabel === "READY" ? Theme.mint : Theme.subtle
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
                 }
             }
 
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: root.separatorColor
-            }
-
-            Row {
+            SegmentTabs {
                 id: tabBar
-                width: parent.width
-                height: 30
-
-                Repeater {
-                    model: [
-                        { key: "output", label: "OUTPUT" },
-                        { key: "input", label: "INPUT" },
-                        { key: "applications", label: "APPLICATIONS" }
-                    ]
-
-                    delegate: Rectangle {
-                        required property var modelData
-                        width: tabBar.width / 3
-                        height: tabBar.height
-                        color: root.activeTab === modelData.key
-                            ? "#111111"
-                            : (tabMouse.containsMouse ? "#080808" : "transparent")
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: root.activeTab === modelData.key
-                                ? root.foregroundColor : root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            font.bold: false
-                        }
-
-                        Rectangle {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: root.activeTab === modelData.key ? 2 : 1
-                            color: root.activeTab === modelData.key ? "#ffffff" : root.separatorColor
-                        }
-
-                        MouseArea {
-                            id: tabMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.activeTab = modelData.key
-                        }
-                    }
-                }
+                accent: Theme.rose
+                current: root.activeTab
+                tabs: [
+                    { key: "output", label: "Output" },
+                    { key: "input", label: "Input" },
+                    { key: "applications", label: "Applications" }
+                ]
+                onPicked: function(key) { root.activeTab = key; }
             }
 
             Item {
                 id: pageArea
                 width: parent.width
-                height: root.height - 112
+                height: parent.height - 40 - tabBar.height - parent.spacing * 2
 
-                Column {
+                DevicePage {
                     id: outputPage
                     visible: root.activeTab === "output"
                     width: parent.width
                     height: parent.height
-                    spacing: 6
-
-                    Column {
-                        width: parent.width
-                        height: 28
-                        spacing: 1
-
-                        Text {
-                            text: "DEFAULT OUTPUT"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-                        Text {
-                            width: parent.width
-                            text: root.audioNodeReady(Pipewire.defaultAudioSink)
-                                ? root.nodeLabel(Pipewire.defaultAudioSink)
-                                : (Pipewire.ready ? "No output device selected" : "Waiting for PipeWire...")
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    Item {
-                        id: outputVolumeRow
-                        width: parent.width
-                        height: 52
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            text: root.audioNodeReady(Pipewire.defaultAudioSink)
-                                && Pipewire.defaultAudioSink.audio.muted
-                                ? "  MASTER VOLUME"
-                                : (root.audioNodeReady(Pipewire.defaultAudioSink)
-                                    && Pipewire.defaultAudioSink.audio.volume < 0.5
-                                    ? "  MASTER VOLUME" : "  MASTER VOLUME")
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            font.bold: false
-                        }
-
-                        Text {
-                            anchors.right: outputMuteButton.left
-                            anchors.rightMargin: 8
-                            anchors.top: parent.top
-                            width: 48
-                            horizontalAlignment: Text.AlignRight
-                            text: root.audioNodeReady(Pipewire.defaultAudioSink)
-                                ? Math.round(Pipewire.defaultAudioSink.audio.volume * 100) + "%" : "--%"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                        }
-
-                        Rectangle {
-                            id: outputMuteButton
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            width: 58
-                            height: 20
-                            radius: 0
-                            color: outputMuteMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                            border.width: 1
-                            border.color: "#373737"
-                            opacity: root.audioNodeReady(Pipewire.defaultAudioSink) ? 1 : 0.45
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: root.audioNodeReady(Pipewire.defaultAudioSink)
-                                    && Pipewire.defaultAudioSink.audio.muted ? "UNMUTE" : "MUTE"
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 10
-                            }
-
-                            MouseArea {
-                                id: outputMuteMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: root.audioNodeReady(Pipewire.defaultAudioSink)
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    const node = Pipewire.defaultAudioSink;
-                                    if (root.audioNodeReady(node))
-                                        node.audio.muted = !node.audio.muted;
-                                }
-                            }
-                        }
-
-                        Slider {
-                            id: outputVolumeSlider
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.topMargin: 27
-                            height: 22
-                            from: 0
-                            to: 1.5
-                            stepSize: 0.01
-                            enabled: root.audioNodeReady(Pipewire.defaultAudioSink)
-                            value: enabled ? Pipewire.defaultAudioSink.audio.volume : 0
-                            onMoved: {
-                                const node = Pipewire.defaultAudioSink;
-                                if (root.audioNodeReady(node))
-                                    node.audio.volume = value;
-                            }
-                            background: Rectangle {
-                                x: outputVolumeSlider.leftPadding
-                                y: outputVolumeSlider.topPadding + outputVolumeSlider.availableHeight / 2 - height / 2
-                                width: outputVolumeSlider.availableWidth
-                                height: 3
-                                color: "#303030"
-                                Rectangle {
-                                    width: outputVolumeSlider.visualPosition * parent.width
-                                    height: parent.height
-                                    color: "#ffffff"
-                                }
-                            }
-                            handle: Rectangle {
-                                x: outputVolumeSlider.leftPadding
-                                    + outputVolumeSlider.visualPosition * (outputVolumeSlider.availableWidth - width)
-                                y: outputVolumeSlider.topPadding + outputVolumeSlider.availableHeight / 2 - height / 2
-                                width: 6
-                                height: 12
-                                radius: 0
-                                color: "#ffffff"
-                                border.width: 1
-                                border.color: "#ffffff"
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: root.separatorColor
-                    }
-
-                    Item {
-                        width: parent.width
-                        height: 17
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "AVAILABLE OUTPUTS"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-                    }
-
-                    Item {
-                        width: parent.width
-                        height: Math.max(0, parent.height - 122)
-
-                        ListView {
-                            id: outputDeviceList
-                            anchors.fill: parent
-                            visible: root.outputDevices.length > 0
-                            clip: true
-                            spacing: 4
-                            model: root.outputDevices
-
-                            delegate: Item {
-                                required property var modelData
-                                width: outputDeviceList.width
-                                height: 36
-
-                                readonly property bool isDefault: Pipewire.defaultAudioSink !== null
-                                    && Pipewire.defaultAudioSink !== undefined
-                                    && Pipewire.defaultAudioSink.id === modelData.id
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 0
-                                    color: parent.isDefault ? "#111111" : "#0c0c0c"
-                                    border.width: 1
-                                    border.color: parent.isDefault ? "#454545" : "#303030"
-                                }
-
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 9
-                                    anchors.right: deviceDefaultLabel.left
-                                    anchors.rightMargin: 6
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: root.nodeLabel(modelData)
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
-                                }
-
-                                Text {
-                                    id: deviceDefaultLabel
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 9
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: parent.isDefault ? "DEFAULT" : ""
-                                    color: root.mutedColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 10
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        const node = modelData;
-                                        if (root.audioNodeReady(node))
-                                            Pipewire.preferredDefaultAudioSink = node;
-                                    }
-                                }
-                            }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            visible: root.outputDevices.length === 0
-                            text: !Pipewire.ready ? "Waiting for PipeWire..." : "No output devices available."
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                        }
-                    }
+                    node: Pipewire.defaultAudioSink
+                    devices: root.outputDevices
+                    currentLabel: "Default output"
+                    emptyNodeLabel: "No output device selected"
+                    listLabel: "Available outputs"
+                    emptyListLabel: "No output devices available."
+                    volumeGlyph: Theme.icons.volumeHigh
+                    mutedGlyph: Theme.icons.volumeOff
+                    onPick: function(device) { Pipewire.preferredDefaultAudioSink = device; }
                 }
 
-                Column {
+                DevicePage {
                     id: inputPage
                     visible: root.activeTab === "input"
                     width: parent.width
                     height: parent.height
-                    spacing: 6
-
-                    Column {
-                        width: parent.width
-                        height: 28
-                        spacing: 1
-
-                        Text {
-                            text: "DEFAULT INPUT"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-                        Text {
-                            width: parent.width
-                            text: root.audioNodeReady(Pipewire.defaultAudioSource)
-                                ? root.nodeLabel(Pipewire.defaultAudioSource)
-                                : (Pipewire.ready ? "No input device selected" : "Waiting for PipeWire...")
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    Item {
-                        id: inputVolumeRow
-                        width: parent.width
-                        height: 52
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            text: root.audioNodeReady(Pipewire.defaultAudioSource)
-                                && Pipewire.defaultAudioSource.audio.muted
-                                ? "󰍭  INPUT VOLUME" : "󰍬  INPUT VOLUME"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            font.bold: false
-                        }
-
-                        Text {
-                            anchors.right: inputMuteButton.left
-                            anchors.rightMargin: 8
-                            anchors.top: parent.top
-                            width: 42
-                            horizontalAlignment: Text.AlignRight
-                            text: root.audioNodeReady(Pipewire.defaultAudioSource)
-                                ? Math.round(Pipewire.defaultAudioSource.audio.volume * 100) + "%" : "--%"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                        }
-
-                        Text {
-                            anchors.right: inputMuteButton.left
-                            anchors.rightMargin: 55
-                            anchors.top: parent.top
-                            width: 36
-                            horizontalAlignment: Text.AlignRight
-                            text: root.audioNodeReady(Pipewire.defaultAudioSource)
-                                && Pipewire.defaultAudioSource.audio.muted ? "MUTED" : ""
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 9
-                        }
-
-                        Rectangle {
-                            id: inputMuteButton
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            width: 58
-                            height: 20
-                            radius: 0
-                            color: inputMuteMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                            border.width: 1
-                            border.color: "#373737"
-                            opacity: root.audioNodeReady(Pipewire.defaultAudioSource) ? 1 : 0.45
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: root.audioNodeReady(Pipewire.defaultAudioSource)
-                                    && Pipewire.defaultAudioSource.audio.muted ? "UNMUTE" : "MUTE"
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 10
-                            }
-
-                            MouseArea {
-                                id: inputMuteMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: root.audioNodeReady(Pipewire.defaultAudioSource)
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    const node = Pipewire.defaultAudioSource;
-                                    if (root.audioNodeReady(node))
-                                        node.audio.muted = !node.audio.muted;
-                                }
-                            }
-                        }
-
-                        Slider {
-                            id: inputVolumeSlider
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.topMargin: 27
-                            height: 22
-                            from: 0
-                            to: 1.5
-                            stepSize: 0.01
-                            enabled: root.audioNodeReady(Pipewire.defaultAudioSource)
-                            value: enabled ? Pipewire.defaultAudioSource.audio.volume : 0
-                            onMoved: {
-                                const node = Pipewire.defaultAudioSource;
-                                if (root.audioNodeReady(node))
-                                    node.audio.volume = value;
-                            }
-                            background: Rectangle {
-                                x: inputVolumeSlider.leftPadding
-                                y: inputVolumeSlider.topPadding + inputVolumeSlider.availableHeight / 2 - height / 2
-                                width: inputVolumeSlider.availableWidth
-                                height: 3
-                                color: "#303030"
-                                Rectangle {
-                                    width: inputVolumeSlider.visualPosition * parent.width
-                                    height: parent.height
-                                    color: "#ffffff"
-                                }
-                            }
-                            handle: Rectangle {
-                                x: inputVolumeSlider.leftPadding
-                                    + inputVolumeSlider.visualPosition * (inputVolumeSlider.availableWidth - width)
-                                y: inputVolumeSlider.topPadding + inputVolumeSlider.availableHeight / 2 - height / 2
-                                width: 6
-                                height: 12
-                                radius: 0
-                                color: "#ffffff"
-                                border.width: 1
-                                border.color: "#ffffff"
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: root.separatorColor
-                    }
-
-                    Item {
-                        width: parent.width
-                        height: 17
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "AVAILABLE INPUTS"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-                    }
-
-                    Item {
-                        width: parent.width
-                        height: Math.max(0, parent.height - 122)
-
-                        ListView {
-                            id: inputDeviceList
-                            anchors.fill: parent
-                            visible: root.inputDevices.length > 0
-                            clip: true
-                            spacing: 4
-                            model: root.inputDevices
-
-                            delegate: Item {
-                                required property var modelData
-                                width: inputDeviceList.width
-                                height: 36
-
-                                readonly property bool isDefault: Pipewire.defaultAudioSource !== null
-                                    && Pipewire.defaultAudioSource !== undefined
-                                    && Pipewire.defaultAudioSource.id === modelData.id
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 0
-                                    color: parent.isDefault ? "#111111" : "#0c0c0c"
-                                    border.width: 1
-                                    border.color: parent.isDefault ? "#454545" : "#303030"
-                                }
-
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 9
-                                    anchors.right: inputDefaultLabel.left
-                                    anchors.rightMargin: 6
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: root.nodeLabel(modelData)
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
-                                }
-
-                                Text {
-                                    id: inputDefaultLabel
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 9
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: parent.isDefault ? "DEFAULT" : ""
-                                    color: root.mutedColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 10
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        const node = modelData;
-                                        if (root.audioNodeReady(node))
-                                            Pipewire.preferredDefaultAudioSource = node;
-                                    }
-                                }
-                            }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            visible: root.inputDevices.length === 0
-                            text: !Pipewire.ready ? "Waiting for PipeWire..." : "No input devices available."
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                        }
-                    }
+                    node: Pipewire.defaultAudioSource
+                    devices: root.inputDevices
+                    currentLabel: "Default input"
+                    emptyNodeLabel: "No input device selected"
+                    listLabel: "Available inputs"
+                    emptyListLabel: "No input devices available."
+                    volumeGlyph: Theme.icons.mic
+                    mutedGlyph: Theme.icons.micOff
+                    onPick: function(device) { Pipewire.preferredDefaultAudioSource = device; }
                 }
 
-                Column {
+                Item {
                     id: applicationsPage
                     visible: root.activeTab === "applications"
-                    width: parent.width
-                    height: parent.height
-                    spacing: 5
+                    anchors.fill: parent
 
-                    Item {
-                        width: parent.width
-                        height: 18
+                    ListView {
+                        id: applicationList
+                        anchors.fill: parent
+                        visible: root.applicationStreams.length > 0
+                        clip: true
+                        spacing: 8
+                        model: root.applicationStreams
 
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "ACTIVE APPLICATION STREAMS"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-                    }
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: applicationList.width
+                            height: 92
+                            radius: Theme.radiusTile
+                            color: Theme.surface
 
-                    Item {
-                        width: parent.width
-                        height: Math.max(0, parent.height - 23)
-
-                        ListView {
-                            id: applicationList
-                            anchors.fill: parent
-                            visible: root.applicationStreams.length > 0
-                            clip: true
-                            spacing: 5
-                            model: root.applicationStreams
-
-                            delegate: Item {
-                                required property var modelData
-                                width: applicationList.width
-                                height: 78
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 0
-                                    color: "#0c0c0c"
-                                    border.width: 1
-                                    border.color: "#303030"
-                                }
+                            Rectangle {
+                                id: applicationBadge
+                                x: 10
+                                y: 10
+                                width: 34
+                                height: 34
+                                radius: 11
+                                color: Theme.raised
 
                                 IconImage {
                                     id: applicationIcon
-                                    x: 8
-                                    y: 7
-                                    width: 18
-                                    height: 18
+                                    anchors.centerIn: parent
+                                    width: 22
+                                    height: 22
                                     source: Quickshell.iconPath(root.applicationIconName(modelData), true)
                                     asynchronous: true
                                 }
 
-                                Text {
-                                    anchors.fill: applicationIcon
-                                    text: ""
-                                    color: "#ffffff"
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 13
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
+                                Icon {
+                                    anchors.centerIn: parent
+                                    text: Theme.icons.musicNote
+                                    color: Theme.rose
                                     visible: applicationIcon.status !== Image.Ready
                                 }
+                            }
 
-                                Text {
-                                    anchors.left: applicationIcon.right
-                                    anchors.leftMargin: 8
-                                    anchors.right: applicationMuteButton.left
-                                    anchors.rightMargin: 7
-                                    anchors.top: parent.top
-                                    anchors.topMargin: 7
+                            Column {
+                                anchors.left: applicationBadge.right
+                                anchors.leftMargin: 10
+                                anchors.right: applicationMuteButton.left
+                                anchors.rightMargin: 8
+                                anchors.verticalCenter: applicationBadge.verticalCenter
+                                spacing: 1
+
+                                UiText {
+                                    width: parent.width
                                     text: root.applicationName(modelData)
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 11
-                                    font.bold: false
+                                    font.pixelSize: 12
+                                    font.weight: Font.DemiBold
                                     elide: Text.ElideRight
                                 }
 
-                                Rectangle {
-                                    id: applicationMuteButton
-                                    anchors.right: parent.right
-                                    anchors.top: parent.top
-                                    anchors.topMargin: 6
-                                    width: 57
-                                    height: 19
-                                    radius: 0
-                                    color: applicationMuteMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                                    border.width: 1
-                                    border.color: "#373737"
-                                    opacity: root.audioNodeReady(modelData) ? 1 : 0.45
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: root.audioNodeReady(modelData) && modelData.audio.muted ? "UNMUTE" : "MUTE"
-                                        color: root.foregroundColor
-                                        font.family: root.fontFamily
-                                        font.pixelSize: 9
-                                    }
-
-                                    MouseArea {
-                                        id: applicationMuteMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        enabled: modelData !== null && modelData !== undefined
-                                            && modelData.ready && modelData.audio !== null
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            const node = modelData;
-                                            if (node && node.ready && node.audio)
-                                                node.audio.muted = !node.audio.muted;
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    anchors.left: applicationIcon.right
-                                    anchors.leftMargin: 8
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 8
-                                    anchors.top: parent.top
-                                    anchors.topMargin: 26
+                                UiText {
+                                    width: parent.width
                                     text: root.outputForStream(modelData)
-                                    color: root.mutedColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    elide: Text.ElideRight
-                                }
-
-                                Slider {
-                                    id: applicationVolumeSlider
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    anchors.right: applicationPercent.left
-                                    anchors.rightMargin: 7
-                                    anchors.top: parent.top
-                                    anchors.topMargin: 47
-                                    height: 22
-                                    from: 0
-                                    to: 1.5
-                                    stepSize: 0.01
-                                    enabled: root.audioNodeReady(modelData)
-                                    value: enabled ? modelData.audio.volume : 0
-                                    onMoved: {
-                                        const node = modelData;
-                                        if (node && node.ready && node.audio)
-                                            node.audio.volume = value;
-                                    }
-                                    background: Rectangle {
-                                        x: applicationVolumeSlider.leftPadding
-                                        y: applicationVolumeSlider.topPadding + applicationVolumeSlider.availableHeight / 2 - height / 2
-                                        width: applicationVolumeSlider.availableWidth
-                                        height: 3
-                                        color: "#303030"
-                                        Rectangle {
-                                            width: applicationVolumeSlider.visualPosition * parent.width
-                                            height: parent.height
-                                            color: "#ffffff"
-                                        }
-                                    }
-                                    handle: Rectangle {
-                                        x: applicationVolumeSlider.leftPadding
-                                            + applicationVolumeSlider.visualPosition * (applicationVolumeSlider.availableWidth - width)
-                                        y: applicationVolumeSlider.topPadding + applicationVolumeSlider.availableHeight / 2 - height / 2
-                                        width: 6
-                                        height: 12
-                                        radius: 0
-                                        color: "#ffffff"
-                                        border.width: 1
-                                        border.color: "#ffffff"
-                                    }
-                                }
-
-                                Text {
-                                    id: applicationPercent
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 8
-                                    anchors.top: parent.top
-                                    anchors.topMargin: 51
-                                    width: 42
-                                    horizontalAlignment: Text.AlignRight
-                                    text: modelData && modelData.audio
-                                        ? Math.round(modelData.audio.volume * 100) + "%" : "--%"
-                                    color: root.mutedColor
-                                    font.family: root.fontFamily
+                                    color: Theme.subtle
                                     font.pixelSize: 10
+                                    elide: Text.ElideRight
                                 }
                             }
-                        }
 
-                        Text {
-                            anchors.centerIn: parent
-                            visible: root.applicationStreams.length === 0
-                            text: !Pipewire.ready ? "Waiting for PipeWire..." : "No active application audio streams."
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
+                            SoftButton {
+                                id: applicationMuteButton
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                y: 11
+                                label: root.audioNodeReady(modelData) && modelData.audio.muted ? "Unmute" : "Mute"
+                                variant: root.audioNodeReady(modelData) && modelData.audio.muted ? "danger" : "tonal"
+                                fontSize: 11
+                                enabled: modelData !== null && modelData !== undefined
+                                    && modelData.ready && modelData.audio !== null
+                                onClicked: {
+                                    const node = modelData;
+                                    if (node && node.ready && node.audio)
+                                        node.audio.muted = !node.audio.muted;
+                                }
+                            }
+
+                            SoftSlider {
+                                id: applicationVolumeSlider
+                                anchors.left: parent.left
+                                anchors.leftMargin: 12
+                                anchors.right: applicationPercent.left
+                                anchors.rightMargin: 8
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 10
+                                from: 0
+                                to: 1.5
+                                stepSize: 0.01
+                                accent: Theme.rose
+                                enabled: root.audioNodeReady(modelData)
+                                value: enabled ? modelData.audio.volume : 0
+                                onMoved: {
+                                    const node = modelData;
+                                    if (node && node.ready && node.audio)
+                                        node.audio.volume = value;
+                                }
+                            }
+
+                            UiText {
+                                id: applicationPercent
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: applicationVolumeSlider.verticalCenter
+                                width: 36
+                                horizontalAlignment: Text.AlignRight
+                                text: modelData && modelData.audio
+                                    ? Math.round(modelData.audio.volume * 100) + "%" : "--%"
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                            }
                         }
                     }
-                }
-            }
 
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: root.separatorColor
-            }
-
-            Item {
-                width: parent.width
-                height: 24
-
-                Text {
-                    anchors.fill: parent
-                    text: root.statusMessage.length > 0 ? root.statusMessage : "PIPEWIRE AUDIO CONTROLS"
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
+                    UiText {
+                        anchors.centerIn: parent
+                        visible: root.applicationStreams.length === 0
+                        text: !Pipewire.ready ? "Waiting for PipeWire..." : "No active application audio streams."
+                        color: Theme.subtle
+                        font.pixelSize: 12
+                    }
                 }
             }
         }

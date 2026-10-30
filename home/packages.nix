@@ -20,6 +20,7 @@ in
     zip
     unzip
     btop
+    unstable.claude-code
     unstable.codex
     bubblewrap
 
@@ -60,6 +61,7 @@ in
     inputs.spotifast.packages.${pkgs.stdenv.hostPlatform.system}.default
     eog
     yt-dlp
+    discord
   ];
 }
 

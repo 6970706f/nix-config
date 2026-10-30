@@ -10,13 +10,6 @@ PopupWindow {
     property var anchorItem: null
     property string activeTab: "cpu"
 
-    readonly property color panelColor: "#000000"
-    readonly property color foregroundColor: "#ffffff"
-    readonly property color mutedColor: "#b8b8b8"
-    readonly property color dimColor: "#686868"
-    readonly property color borderColor: "#ffffff"
-    readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property int cpuUsage: 0
     property int cpuCores: 1
@@ -46,25 +39,26 @@ PopupWindow {
     property var topCpuProcesses: []
     property var topMemoryProcesses: []
 
-    width: 390
-    height: 460
+    width: 390 + Theme.popupPadX * 2
+    height: 524 + Theme.popupPadY
     color: "transparent"
     visible: false
 
     // Native popup grab: dismiss automatically on outside click and release focus on close.
     anchor.window: root.anchorWindow
     anchor.rect.x: root.panelLeft
-    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 8 : 34
+    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height : 34
     grabFocus: true
 
     readonly property int panelLeft: {
         if (!root.anchorItem || !root.anchorWindow)
-            return 8;
+            return 0;
 
+        // Re-read the anchor on open: bar tabs shift as their content changes.
+        root.visible;
         const point = root.anchorItem.mapToItem(root.anchorWindow.contentItem, 0, 0);
-        const minimumX = root.anchorWindow.width >= root.width + 16 ? 8 : 0;
-        const maximumX = Math.max(minimumX, root.anchorWindow.width - root.width - minimumX);
-        return Math.max(minimumX, Math.min(
+        const maximumX = Math.max(0, root.anchorWindow.width - root.width);
+        return Math.max(0, Math.min(
             point.x + root.anchorItem.width / 2 - root.width / 2,
             maximumX
         ));
@@ -268,421 +262,178 @@ PopupWindow {
         onActivated: root.closePanel()
     }
 
-    Rectangle {
+    readonly property color tabAccent: root.activeTab === "cpu" ? Theme.iris : Theme.foam
+
+    PanelSurface {
         id: outerBorder
-        focus: root.visible
-        anchors.fill: parent
-        color: root.panelColor
-        radius: 0
-        border.width: 1
-        border.color: root.borderColor
+        window: root
+        accent: root.tabAccent
 
         Column {
             id: contentColumn
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 0
+            spacing: 10
 
-            Item {
-                width: parent.width
-                height: 28
+            PanelHeader {
+                glyph: root.activeTab === "cpu" ? Theme.icons.cpu : Theme.icons.memory
+                accent: root.tabAccent
+                title: "System monitor"
+                subtitle: "Up " + root.formatUptime(root.uptimeSeconds) + "  ·  " + root.processCount + " processes"
 
-                Text {
-                    anchors.left: parent.left
+                Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "󰻠  SYSTEM MONITOR"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 15
-                    font.bold: false
+                    width: 7
+                    height: 7
+                    radius: 3.5
+                    color: Theme.mint
+
+                    SequentialAnimation on opacity {
+                        running: root.visible
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.3; duration: 900; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 1; duration: 900; easing.type: Easing.InOutSine }
+                    }
                 }
 
-                Text {
-                    anchors.right: parent.right
+                UiText {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.activeTab === "cpu" ? "CPU / LIVE" : "MEMORY / LIVE"
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    horizontalAlignment: Text.AlignRight
+                    text: "Live"
+                    color: Theme.subtle
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
                 }
             }
 
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: root.separatorColor
-            }
-
-            Row {
+            SegmentTabs {
                 id: tabBar
-                width: parent.width
-                height: 30
-
-                Rectangle {
-                    width: parent.width / 2
-                    height: parent.height
-                    color: root.activeTab === "cpu"
-                        ? "#111111" : (cpuTabMouse.containsMouse ? "#080808" : "transparent")
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "CPU"
-                        color: root.activeTab === "cpu" ? root.foregroundColor : root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                        font.bold: false
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: root.activeTab === "cpu" ? 2 : 1
-                        color: root.activeTab === "cpu" ? "#ffffff" : root.separatorColor
-                    }
-
-                    MouseArea {
-                        id: cpuTabMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.activeTab = "cpu"
-                    }
-                }
-
-                Rectangle {
-                    width: parent.width / 2
-                    height: parent.height
-                    color: root.activeTab === "memory"
-                        ? "#111111" : (memoryTabMouse.containsMouse ? "#080808" : "transparent")
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "MEMORY"
-                        color: root.activeTab === "memory" ? root.foregroundColor : root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                        font.bold: false
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: root.activeTab === "memory" ? 2 : 1
-                        color: root.activeTab === "memory" ? "#ffffff" : root.separatorColor
-                    }
-
-                    MouseArea {
-                        id: memoryTabMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.activeTab = "memory"
-                    }
-                }
-            }
-
-            Item {
-                width: parent.width
-                height: 6
+                accent: root.tabAccent
+                current: root.activeTab
+                tabs: [
+                    { key: "cpu", label: "CPU" },
+                    { key: "memory", label: "Memory" }
+                ]
+                onPicked: function(key) { root.activeTab = key; }
             }
 
             Column {
                 id: cpuPage
                 visible: root.activeTab === "cpu"
                 width: parent.width
-                spacing: 7
+                spacing: 10
 
-                Item {
+                Rectangle {
                     width: parent.width
-                    height: 58
+                    height: 100
+                    radius: 18
+                    color: Theme.surface
 
-                    Text {
-                        id: cpuPercentText
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        text: root.cpuUsage + "%"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 26
-                        font.bold: false
+                    RingGauge {
+                        id: cpuRing
+                        x: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 78
+                        height: 78
+                        thickness: 8
+                        value: root.clampPercent(root.cpuUsage)
+                        accent: Theme.levelColor(root.cpuUsage, Theme.iris)
+
+                        UiText {
+                            anchors.centerIn: parent
+                            text: root.cpuUsage + "%"
+                            font.family: Theme.displayFont
+                            font.pixelSize: 19
+                            font.weight: Font.Bold
+                        }
                     }
 
                     Column {
-                        anchors.left: cpuPercentText.right
-                        anchors.leftMargin: 10
+                        anchors.left: cpuRing.right
+                        anchors.leftMargin: 14
                         anchors.right: parent.right
-                        anchors.top: parent.top
-                        spacing: 2
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 3
 
-                        Text {
-                            text: "TOTAL CPU USAGE"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: false
+                        UiText {
+                            width: parent.width
+                            text: "Total CPU usage"
+                            font.pixelSize: 14
+                            font.weight: Font.Bold
                         }
 
-                        Text {
+                        UiText {
                             width: parent.width
-                            text: root.cpuCores + " logical cores · sampled live"
-                            color: root.dimColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 9
+                            text: root.cpuModel
+                            color: Theme.subtle
+                            font.pixelSize: 10
                             elide: Text.ElideRight
                         }
-                    }
 
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 5
-                        color: "#242424"
-
-                        Rectangle {
-                            width: parent.width * root.clampPercent(root.cpuUsage) / 100
-                            height: parent.height
-                            color: root.foregroundColor
+                        UiText {
+                            width: parent.width
+                            text: root.cpuFrequencyMhz > 0
+                                ? "Average " + root.cpuFrequencyMhz + " MHz"
+                                : "CPU frequency unavailable"
+                            color: Theme.subtle
+                            font.pixelSize: 10
+                            elide: Text.ElideRight
                         }
                     }
                 }
 
                 Row {
                     width: parent.width
-                    height: 49
-                    spacing: 6
+                    spacing: 8
 
                     Repeater {
                         model: [
-                            { label: "CORES", value: String(root.cpuCores) },
-                            { label: "LOAD / 1M", value: root.load1.toFixed(2) },
-                            { label: "PROCESSES", value: String(root.processCount) }
+                            { label: "Cores", value: String(root.cpuCores) },
+                            { label: "Load 1m", value: root.load1.toFixed(2) },
+                            { label: "Load 5m", value: root.load5.toFixed(2) },
+                            { label: "Load 15m", value: root.load15.toFixed(2) }
                         ]
 
-                        delegate: Rectangle {
+                        delegate: StatTile {
                             required property var modelData
-                            width: (parent.width - 12) / 3
-                            height: parent.height
-                            color: "#080808"
-                            border.width: 1
-                            border.color: root.separatorColor
-
-                            Column {
-                                anchors.centerIn: parent
-                                width: parent.width - 8
-                                spacing: 4
-
-                                Text {
-                                    width: parent.width
-                                    text: modelData.label
-                                    color: root.dimColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-
-                                Text {
-                                    width: parent.width
-                                    text: modelData.value
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 13
-                                    font.bold: false
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-                            }
+                            width: (parent.width - 24) / 4
+                            label: modelData.label
+                            value: modelData.value
                         }
                     }
                 }
 
-                Item {
-                    width: parent.width
-                    height: 20
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.cpuModel
-                        color: root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                        width: parent.width - 5
-                        elide: Text.ElideRight
-                    }
-                }
-
-                Item {
-                    width: parent.width
-                    height: 15
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "LOAD  " + root.load1.toFixed(2) + " / "
-                            + root.load5.toFixed(2) + " / " + root.load15.toFixed(2)
-                            + "     UPTIME  " + root.formatUptime(root.uptimeSeconds)
-                        color: root.dimColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                        width: parent.width
-                        elide: Text.ElideRight
-                    }
-                }
-
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: root.separatorColor
-                }
-
-                Item {
-                    width: parent.width
-                    height: 15
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "TOP PROCESSES  /  CPU"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: false
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "CPU · RSS"
-                        color: root.dimColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                    }
+                UiText {
+                    height: 16
+                    text: "Top processes by CPU"
+                    color: Theme.subtle
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
                 }
 
                 Column {
                     width: parent.width
-                    spacing: 2
+                    spacing: 1
 
                     Repeater {
                         model: root.topCpuProcesses
 
-                        delegate: Rectangle {
+                        delegate: ProcessRow {
                             required property var modelData
-                            width: parent.width
-                            height: 30
-                            color: "#000000"
-                            clip: true
-
-                            Row {
-                                anchors.fill: parent
-                                anchors.leftMargin: 7
-                                anchors.rightMargin: 7
-                                spacing: 7
-
-                                Text {
-                                    width: 34
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.pid
-                                    color: "#9a9a9a"
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                                Item {
-                                    width: Math.max(60, parent.width - 14 - 34 - 45 - 58 - 21)
-                                    height: parent.height
-
-                                    Text {
-                                        anchors.left: parent.left
-                                        anchors.right: parent.right
-                                        anchors.top: parent.top
-                                        anchors.topMargin: 4
-                                        height: 12
-                                        text: String(modelData.name || "unknown")
-                                        color: "#f2f2f2"
-                                        font.family: root.fontFamily
-                                        font.pixelSize: 10
-                                        verticalAlignment: Text.AlignVCenter
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Rectangle {
-                                        anchors.left: parent.left
-                                        anchors.right: parent.right
-                                        anchors.bottom: parent.bottom
-                                        anchors.bottomMargin: 5
-                                        height: 2
-                                        color: "#383838"
-
-                                        Rectangle {
-                                            width: parent.width * root.clampPercent(Number(modelData.cpu)) / 100
-                                            height: parent.height
-                                            color: "#f2f2f2"
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    width: 45
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: Number(modelData.cpu).toFixed(1) + "%"
-                                    color: "#f2f2f2"
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    horizontalAlignment: Text.AlignRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                                Text {
-                                    width: 58
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: root.formatMemory(modelData.rss)
-                                    color: "#c0c0c0"
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    horizontalAlignment: Text.AlignRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                height: 1
-                                color: "#292929"
-                            }
+                            pid: modelData.pid
+                            name: String(modelData.name || "unknown")
+                            percent: Number(modelData.cpu)
+                            memory: root.formatMemory(modelData.rss)
+                            accent: Theme.iris
                         }
                     }
-                    Text {
+
+                    UiText {
                         visible: root.topCpuProcesses.length === 0
                         width: parent.width
                         height: 22
                         text: "Waiting for process data…"
-                        color: root.dimColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-
-                Item {
-                    width: parent.width
-                    height: 14
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.cpuFrequencyMhz > 0
-                            ? "AVG FREQUENCY  " + root.cpuFrequencyMhz + " MHz"
-                            : "CPU frequency unavailable"
-                        color: root.dimColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
+                        color: Theme.subtle
+                        font.pixelSize: 11
                     }
                 }
             }
@@ -691,309 +442,146 @@ PopupWindow {
                 id: memoryPage
                 visible: root.activeTab === "memory"
                 width: parent.width
-                spacing: 7
+                spacing: 10
 
-                Item {
+                Rectangle {
                     width: parent.width
-                    height: 58
+                    height: 100
+                    radius: 18
+                    color: Theme.surface
 
-                    Text {
-                        id: memoryUsedText
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        text: root.formatMemory(root.memUsedKb)
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 23
-                        font.bold: false
+                    RingGauge {
+                        id: memoryRing
+                        x: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 78
+                        height: 78
+                        thickness: 8
+                        value: root.clampPercent(root.memoryUsage)
+                        accent: Theme.levelColor(root.memoryUsage, Theme.foam)
+
+                        UiText {
+                            anchors.centerIn: parent
+                            text: root.memoryUsage + "%"
+                            font.family: Theme.displayFont
+                            font.pixelSize: 19
+                            font.weight: Font.Bold
+                        }
                     }
 
                     Column {
-                        anchors.left: memoryUsedText.right
-                        anchors.leftMargin: 10
+                        anchors.left: memoryRing.right
+                        anchors.leftMargin: 14
                         anchors.right: parent.right
-                        anchors.top: parent.top
-                        spacing: 2
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 3
 
-                        Text {
-                            text: "RAM IN USE"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                            font.bold: false
-                        }
-
-                        Text {
+                        UiText {
                             width: parent.width
-                            text: root.memoryUsage + "% of " + root.formatMemory(root.memTotalKb)
-                            color: root.dimColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
+                            text: root.formatMemory(root.memUsedKb) + " in use"
+                            font.pixelSize: 14
+                            font.weight: Font.Bold
                         }
-                    }
 
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 5
-                        color: "#242424"
+                        UiText {
+                            width: parent.width
+                            text: "of " + root.formatMemory(root.memTotalKb) + " RAM"
+                            color: Theme.subtle
+                            font.pixelSize: 10
+                        }
 
-                        Rectangle {
-                            width: parent.width * root.clampPercent(root.memoryUsage) / 100
-                            height: parent.height
-                            color: root.foregroundColor
+                        UiText {
+                            width: parent.width
+                            text: "Root disk " + root.formatMemory(root.diskUsedKb) + " / "
+                                + root.formatMemory(root.diskTotalKb) + "  ·  " + root.diskPercent
+                            color: Theme.subtle
+                            font.pixelSize: 10
+                            elide: Text.ElideRight
                         }
                     }
                 }
 
                 Row {
                     width: parent.width
-                    height: 49
-                    spacing: 6
+                    spacing: 8
 
                     Repeater {
                         model: [
-                            { label: "AVAILABLE", value: root.formatMemory(root.memAvailableKb) },
-                            { label: "FREE", value: root.formatMemory(root.memFreeKb) },
-                            { label: "CACHE", value: root.formatMemory(root.memCachedKb) }
+                            { label: "Available", value: root.formatMemory(root.memAvailableKb) },
+                            { label: "Free", value: root.formatMemory(root.memFreeKb) },
+                            { label: "Cache", value: root.formatMemory(root.memCachedKb) }
                         ]
 
-                        delegate: Rectangle {
+                        delegate: StatTile {
                             required property var modelData
-                            width: (parent.width - 12) / 3
-                            height: parent.height
-                            color: "#080808"
-                            border.width: 1
-                            border.color: root.separatorColor
-
-                            Column {
-                                anchors.centerIn: parent
-                                width: parent.width - 8
-                                spacing: 4
-
-                                Text {
-                                    width: parent.width
-                                    text: modelData.label
-                                    color: root.dimColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-
-                                Text {
-                                    width: parent.width
-                                    text: modelData.value
-                                    color: root.foregroundColor
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 12
-                                    font.bold: false
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-                            }
+                            width: (parent.width - 16) / 3
+                            label: modelData.label
+                            value: modelData.value
                         }
                     }
                 }
 
                 Item {
                     width: parent.width
-                    height: 31
+                    height: 16
 
-                    Column {
-                        anchors.fill: parent
-                        spacing: 5
-
-                        Row {
-                            width: parent.width
-                            height: 13
-
-                            Text {
-                                anchors.left: parent.left
-                                text: "SWAP"
-                                color: root.mutedColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 9
-                            }
-
-                            Text {
-                                anchors.right: parent.right
-                                text: root.formatMemory(Math.max(0, root.swapTotalKb - root.swapFreeKb))
-                                    + " / " + root.formatMemory(root.swapTotalKb)
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 9
-                            }
-                        }
-
-                        Rectangle {
-                            width: parent.width
-                            height: 4
-                            color: "#242424"
-
-                            Rectangle {
-                                width: parent.width * (root.swapTotalKb > 0
-                                    ? root.clampPercent((root.swapTotalKb - root.swapFreeKb) * 100 / root.swapTotalKb)
-                                    : 0) / 100
-                                height: parent.height
-                                color: root.foregroundColor
-                            }
-                        }
-                    }
-                }
-
-                Item {
-                    width: parent.width
-                    height: 15
-
-                    Text {
+                    UiText {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "ROOT DISK  " + root.formatMemory(root.diskUsedKb) + " / "
-                            + root.formatMemory(root.diskTotalKb) + "  ·  " + root.diskPercent
-                        color: root.dimColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                        width: parent.width
-                        elide: Text.ElideRight
+                        text: "Top processes by memory"
+                        color: Theme.subtle
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
                     }
-                }
 
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: root.separatorColor
-                }
-
-                Item {
-                    width: parent.width
-                    height: 15
-
-                    Text {
-                        anchors.left: parent.left
+                    MeterBar {
+                        anchors.right: swapLabel.left
+                        anchors.rightMargin: 8
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "TOP PROCESSES  /  MEMORY"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                        font.bold: false
+                        width: 40
+                        height: 5
+                        accent: Theme.foam
+                        value: root.swapTotalKb > 0
+                            ? (root.swapTotalKb - root.swapFreeKb) / root.swapTotalKb
+                            : 0
                     }
 
-                    Text {
+                    UiText {
+                        id: swapLabel
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "RAM · CPU"
-                        color: root.dimColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
+                        text: "Swap " + root.formatMemory(Math.max(0, root.swapTotalKb - root.swapFreeKb))
+                            + " / " + root.formatMemory(root.swapTotalKb)
+                        color: Theme.subtle
+                        font.pixelSize: 10
                     }
                 }
 
                 Column {
                     width: parent.width
-                    spacing: 2
+                    spacing: 1
 
                     Repeater {
                         model: root.topMemoryProcesses
 
-                        delegate: Rectangle {
+                        delegate: ProcessRow {
                             required property var modelData
-                            width: parent.width
-                            height: 30
-                            color: "#000000"
-                            clip: true
-
-                            Row {
-                                anchors.fill: parent
-                                anchors.leftMargin: 7
-                                anchors.rightMargin: 7
-                                spacing: 7
-
-                                Text {
-                                    width: 34
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.pid
-                                    color: "#9a9a9a"
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                                Item {
-                                    width: Math.max(60, parent.width - 14 - 34 - 45 - 58 - 21)
-                                    height: parent.height
-
-                                    Text {
-                                        anchors.left: parent.left
-                                        anchors.right: parent.right
-                                        anchors.top: parent.top
-                                        anchors.topMargin: 4
-                                        height: 12
-                                        text: String(modelData.name || "unknown")
-                                        color: "#f2f2f2"
-                                        font.family: root.fontFamily
-                                        font.pixelSize: 10
-                                        verticalAlignment: Text.AlignVCenter
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Rectangle {
-                                        anchors.left: parent.left
-                                        anchors.right: parent.right
-                                        anchors.bottom: parent.bottom
-                                        anchors.bottomMargin: 5
-                                        height: 2
-                                        color: "#383838"
-
-                                        Rectangle {
-                                            width: parent.width * root.clampPercent(Number(modelData.mem)) / 100
-                                            height: parent.height
-                                            color: "#f2f2f2"
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    width: 45
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: Number(modelData.mem).toFixed(1) + "%"
-                                    color: "#f2f2f2"
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    horizontalAlignment: Text.AlignRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                                Text {
-                                    width: 58
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: root.formatMemory(modelData.rss)
-                                    color: "#c0c0c0"
-                                    font.family: root.fontFamily
-                                    font.pixelSize: 9
-                                    horizontalAlignment: Text.AlignRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                height: 1
-                                color: "#292929"
-                            }
+                            pid: modelData.pid
+                            name: String(modelData.name || "unknown")
+                            percent: Number(modelData.mem)
+                            memory: root.formatMemory(modelData.rss)
+                            accent: Theme.foam
                         }
                     }
-                    Text {
+
+                    UiText {
                         visible: root.topMemoryProcesses.length === 0
                         width: parent.width
                         height: 22
                         text: "Waiting for process data…"
-                        color: root.dimColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                        verticalAlignment: Text.AlignVCenter
+                        color: Theme.subtle
+                        font.pixelSize: 11
                     }
                 }
             }

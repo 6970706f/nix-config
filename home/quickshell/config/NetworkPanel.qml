@@ -9,11 +9,6 @@ PopupWindow {
     property var anchorWindow: null
     property var anchorItem: null
 
-    readonly property color panelColor: "#000000"
-    readonly property color foregroundColor: "#ffffff"
-    readonly property color mutedColor: "#b8b8b8"
-    readonly property color borderColor: "#ffffff"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property bool networkManagerAvailable: true
     property string activeTab: "wifi"
@@ -46,25 +41,26 @@ PopupWindow {
     property string pendingSecurity: ""
     property bool pendingProtected: false
 
-    width: 390
-    height: activeTab === "wifi" ? (passwordPromptVisible ? 390 : 345) : 260
+    width: 390 + Theme.popupPadX * 2
+    height: (activeTab === "wifi" ? 466 : 300) + Theme.popupPadY
     color: "transparent"
     visible: false
 
     // Native popup grab: dismiss automatically on outside click and release focus on close.
     anchor.window: root.anchorWindow
     anchor.rect.x: root.panelLeft
-    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 8 : 34
+    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height : 34
     grabFocus: true
 
     readonly property int panelLeft: {
         if (!root.anchorItem || !root.anchorWindow)
-            return 8;
+            return 0;
 
+        // Re-read the anchor on open: bar tabs shift as their content changes.
+        root.visible;
         const point = root.anchorItem.mapToItem(root.anchorWindow.contentItem, 0, 0);
-        const minimumX = root.anchorWindow.width >= root.width + 16 ? 8 : 0;
-        const maximumX = Math.max(minimumX, root.anchorWindow.width - root.width - minimumX);
-        return Math.max(minimumX, Math.min(
+        const maximumX = Math.max(0, root.anchorWindow.width - root.width);
+        return Math.max(0, Math.min(
             point.x + root.anchorItem.width / 2 - root.width / 2,
             maximumX
         ));
@@ -612,359 +608,271 @@ PopupWindow {
         onActivated: root.closePanel()
     }
 
-    Rectangle {
+    function signalGlyph(signal) {
+        if (signal >= 75)
+            return Theme.icons.wifi4;
+        if (signal >= 50)
+            return Theme.icons.wifi3;
+        if (signal >= 25)
+            return Theme.icons.wifi2;
+        return Theme.icons.wifi1;
+    }
+
+    readonly property bool controlsIdle: !root.busy && !root.statusLoading && !root.scanLoading
+
+    PanelSurface {
         id: outerBorder
-        focus: root.visible
-        anchors.fill: parent
-        color: root.panelColor
-        radius: 0
-        border.width: 1
-        border.color: root.borderColor
+        window: root
+        accent: Theme.foam
 
         Column {
             id: contentColumn
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 0
+            spacing: 10
 
-            Item {
-                width: parent.width
-                height: 28
-
-                Text {
-                    id: networkTitle
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "󰖩  NETWORK"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 15
-                    font.bold: false
-                }
-
-                Text {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.statusLoading ? "REFRESHING" : (root.busy ? "WORKING" : "")
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    horizontalAlignment: Text.AlignRight
-                    elide: Text.ElideRight
-                }
+            PanelHeader {
+                glyph: root.activeTab === "wifi" ? Theme.icons.wifi4 : Theme.icons.ethernet
+                accent: Theme.foam
+                title: "Network"
+                subtitle: root.errorMessage.length > 0
+                    ? "Needs attention"
+                    : (root.statusLoading ? "Refreshing…" : (root.busy ? "Working…" : root.connectivityLabel()))
             }
 
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: "#303030"
-            }
-
-            Row {
+            SegmentTabs {
                 id: tabBar
-                width: parent.width
-                height: 30
-
-                Rectangle {
-                    width: parent.width / 2
-                    height: parent.height
-                    color: root.activeTab === "wifi" ? "#111111" : (wifiTabMouse.containsMouse ? "#080808" : "transparent")
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "WI-FI"
-                        color: root.activeTab === "wifi" ? root.foregroundColor : root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                        font.bold: false
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: root.activeTab === "wifi" ? 2 : 1
-                        color: root.activeTab === "wifi" ? "#ffffff" : "#303030"
-                    }
-
-                    MouseArea {
-                        id: wifiTabMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.activeTab = "wifi"
-                    }
-                }
-
-                Rectangle {
-                    width: parent.width / 2
-                    height: parent.height
-                    color: root.activeTab === "ethernet" ? "#111111" : (ethernetTabMouse.containsMouse ? "#080808" : "transparent")
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "ETHERNET"
-                        color: root.activeTab === "ethernet" ? root.foregroundColor : root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                        font.bold: false
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: root.activeTab === "ethernet" ? 2 : 1
-                        color: root.activeTab === "ethernet" ? "#ffffff" : "#303030"
-                    }
-
-                    MouseArea {
-                        id: ethernetTabMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.activeTab = "ethernet"
-                    }
-                }
+                accent: Theme.foam
+                current: root.activeTab
+                tabs: [
+                    { key: "wifi", label: "Wi-Fi" },
+                    { key: "ethernet", label: "Ethernet" }
+                ]
+                onPicked: function(key) { root.activeTab = key; }
             }
 
             Column {
                 id: wifiPage
                 visible: root.activeTab === "wifi"
                 width: parent.width
-                spacing: 5
+                spacing: 8
 
-                Row {
+                Rectangle {
                     width: parent.width
-                    height: 21
-                    spacing: 7
+                    height: 62
+                    radius: 18
+                    color: root.wifiConnected() ? Theme.tint(Theme.foam, 0.14) : Theme.surface
 
-                    Text {
-                        text: "WI-FI"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 12
-                        font.bold: false
+                    Icon {
+                        id: wifiStateIcon
+                        x: 14
                         anchors.verticalCenter: parent.verticalCenter
+                        text: root.wifiEnabled
+                            ? root.signalGlyph(parseInt(root.wifiSignal, 10) || 0)
+                            : Theme.icons.wifiOff
+                        color: root.wifiConnected() ? Theme.foam : Theme.muted
+                        font.pixelSize: 24
                     }
 
-                    Text {
-                        text: root.wifiStateLabel()
-                        color: root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
+                    Column {
+                        anchors.left: wifiStateIcon.right
+                        anchors.leftMargin: 12
+                        anchors.right: wifiSwitch.left
+                        anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
-                        elide: Text.ElideRight
-                        width: parent.width - 70
+                        spacing: 1
+
+                        UiText {
+                            width: parent.width
+                            text: root.wifiConnected() ? root.currentWifiName() : "No Wi-Fi network connected"
+                            font.pixelSize: 13
+                            font.weight: Font.Bold
+                            elide: Text.ElideRight
+                        }
+
+                        UiText {
+                            width: parent.width
+                            text: root.wifiStateLabel() + (root.wifiIp ? "  ·  " + root.wifiIp : "")
+                            color: Theme.subtle
+                            font.pixelSize: 10
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    SoftSwitch {
+                        id: wifiSwitch
+                        anchors.right: parent.right
+                        anchors.rightMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        accent: Theme.foam
+                        checked: root.wifiEnabled
+                        enabled: root.networkManagerAvailable && root.controlsIdle
+                        onClicked: root.setWifiEnabled(!root.wifiEnabled)
                     }
                 }
 
-                Row {
+                Item {
                     width: parent.width
-                    height: 28
-                    spacing: 7
+                    height: 32
 
-                    Rectangle {
-                        width: 86
-                        height: parent.height
-                        radius: 0
-                        color: wifiToggleMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                        border.width: 1
-                        border.color: "#373737"
-                        opacity: root.busy || root.statusLoading || root.scanLoading ? 0.5 : 1
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.wifiEnabled ? "Wi-Fi ON" : "Wi-Fi OFF"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-
-                        MouseArea {
-                            id: wifiToggleMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            enabled: root.networkManagerAvailable && !root.busy && !root.statusLoading && !root.scanLoading
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.setWifiEnabled(!root.wifiEnabled)
-                        }
+                    UiText {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Networks"
+                        color: Theme.subtle
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
                     }
 
-                    Rectangle {
-                        width: 91
-                        height: parent.height
-                        visible: root.wifiConnected()
-                        radius: 0
-                        color: wifiDisconnectMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                        border.width: 1
-                        border.color: "#373737"
-                        opacity: root.busy || root.statusLoading || root.scanLoading ? 0.5 : 1
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 6
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Disconnect"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-
-                        MouseArea {
-                            id: wifiDisconnectMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            enabled: root.networkManagerAvailable && !root.busy && !root.statusLoading && !root.scanLoading
-                            cursorShape: Qt.PointingHandCursor
+                        SoftButton {
+                            visible: root.wifiConnected()
+                            label: "Disconnect"
+                            fontSize: 11
+                            enabled: root.networkManagerAvailable && root.controlsIdle
                             onClicked: root.disconnectWifi()
                         }
-                    }
 
-                    Rectangle {
-                        width: 94
-                        height: parent.height
-                        radius: 0
-                        color: refreshMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                        border.width: 1
-                        border.color: "#373737"
-                        opacity: root.busy || root.statusLoading || root.scanLoading ? 0.5 : 1
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.scanLoading ? "Scanning…" : "↻ Refresh"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 10
-                        }
-
-                        MouseArea {
-                            id: refreshMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            enabled: root.networkManagerAvailable && root.wifiEnabled && !root.busy && !root.statusLoading && !root.scanLoading
-                            cursorShape: Qt.PointingHandCursor
+                        SoftButton {
+                            label: root.scanLoading ? "Scanning…" : "Refresh"
+                            glyph: Theme.icons.refresh
+                            fontSize: 11
+                            enabled: root.networkManagerAvailable && root.wifiEnabled && root.controlsIdle
                             onClicked: root.refreshNetworks(true)
                         }
                     }
                 }
 
-                Text {
+                Item {
                     width: parent.width
-                    height: 19
-                    text: root.wifiConnected()
-                        ? "Connected: " + root.currentWifiName()
-                        : "No Wi-Fi network connected"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 11
-                    elide: Text.ElideRight
-                    verticalAlignment: Text.AlignVCenter
-                }
+                    height: root.passwordPromptVisible ? 112 : 192
 
-                ListView {
-                    id: wifiList
-                    width: parent.width
-                    height: root.passwordPromptVisible ? 78 : 118
-                    clip: true
-                    spacing: 3
-                    model: root.wifiNetworks
-                    boundsBehavior: Flickable.StopAtBounds
+                    ListView {
+                        id: wifiList
+                        anchors.fill: parent
+                        clip: true
+                        spacing: 2
+                        model: root.wifiNetworks
+                        boundsBehavior: Flickable.StopAtBounds
 
-                    delegate: Rectangle {
-                        id: networkRow
-                        required property var modelData
-                        width: wifiList.width
-                        height: 27
-                        radius: 0
-                        color: modelData.inUse ? "#1a1a1a" : (networkRowMouse.containsMouse ? "#101010" : "transparent")
-                        border.width: modelData.inUse ? 1 : 0
-                        border.color: "#454545"
+                        delegate: Rectangle {
+                            id: networkRow
+                            required property var modelData
+                            width: wifiList.width
+                            height: 38
+                            radius: 13
+                            color: modelData.inUse
+                                ? Theme.tint(Theme.foam, 0.14)
+                                : (networkRowMouse.containsMouse ? Theme.surface : "transparent")
 
-                        Row {
-                            anchors.fill: parent
-                            anchors.leftMargin: 8
-                            anchors.rightMargin: 8
-                            spacing: 6
+                            Behavior on color {
+                                ColorAnimation { duration: Theme.fast }
+                            }
 
-                            Text {
-                                width: parent.width - 105
-                                height: parent.height
+                            Icon {
+                                id: networkSignalIcon
+                                x: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 18
+                                text: root.signalGlyph(networkRow.modelData.signal)
+                                color: networkRow.modelData.inUse ? Theme.foam : Theme.subtle
+                                font.pixelSize: 15
+                            }
+
+                            UiText {
+                                anchors.left: networkSignalIcon.right
+                                anchors.leftMargin: 10
+                                anchors.right: networkMeta.left
+                                anchors.rightMargin: 8
+                                anchors.verticalCenter: parent.verticalCenter
                                 text: networkRow.modelData.ssid
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 11
-                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 12
+                                font.weight: networkRow.modelData.inUse ? Font.DemiBold : Font.Medium
                                 elide: Text.ElideRight
                             }
 
-                            Text {
-                                width: 72
-                                height: parent.height
-                                text: (networkRow.modelData.signal > 0 ? networkRow.modelData.signal + "%" : "--")
-                                    + (networkRow.modelData.security === "--" ? "" : "  󰌾")
-                                color: root.mutedColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 10
-                                horizontalAlignment: Text.AlignRight
-                                verticalAlignment: Text.AlignVCenter
+                            Row {
+                                id: networkMeta
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 6
+
+                                UiText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: networkRow.modelData.signal > 0 ? networkRow.modelData.signal + "%" : "--"
+                                    color: Theme.subtle
+                                    font.pixelSize: 11
+                                }
+
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: networkRow.modelData.security !== "--"
+                                    text: Theme.icons.lock
+                                    color: Theme.muted
+                                    font.pixelSize: 12
+                                }
+
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: networkRow.modelData.inUse
+                                    text: Theme.icons.check
+                                    color: Theme.foam
+                                    font.pixelSize: 14
+                                }
                             }
 
-                            Text {
-                                width: 18
-                                height: parent.height
-                                text: networkRow.modelData.inUse ? "✓" : ""
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 12
-                                horizontalAlignment: Text.AlignRight
-                                verticalAlignment: Text.AlignVCenter
+                            MouseArea {
+                                id: networkRowMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                enabled: !root.busy && !root.scanLoading && !root.statusLoading && !networkRow.modelData.inUse
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.handleNetworkClick(networkRow.modelData)
                             }
                         }
+                    }
 
-                        MouseArea {
-                            id: networkRowMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            enabled: !root.busy && !root.scanLoading && !root.statusLoading && !networkRow.modelData.inUse
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.handleNetworkClick(networkRow.modelData)
-                        }
+                    UiText {
+                        anchors.centerIn: parent
+                        visible: root.wifiNetworks.length === 0
+                            && (root.scanLoading || (root.wifiEnabled && root.wifiDevice.length > 0))
+                        text: root.scanLoading ? "Scanning for available networks…" : "No networks found. Refresh the list."
+                        color: Theme.subtle
+                        font.pixelSize: 12
                     }
                 }
 
-                Text {
-                    visible: root.scanLoading || (root.wifiEnabled && root.wifiDevice.length > 0 && root.wifiNetworks.length === 0)
-                    width: parent.width
-                    height: 14
-                    text: root.scanLoading ? "Scanning for available networks…" : "No networks found. Refresh the list."
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    elide: Text.ElideRight
-                }
-
-                Column {
+                Rectangle {
                     visible: root.passwordPromptVisible
                     width: parent.width
-                    spacing: 4
+                    height: 76
+                    radius: Theme.radiusTile
+                    color: Theme.surface
 
-                    Text {
-                        width: parent.width
-                        height: 16
-                        text: "Password for: " + root.pendingDisplayName
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
+                    UiText {
+                        x: 12
+                        y: 8
+                        width: parent.width - 24
+                        text: "Password for " + root.pendingDisplayName
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
 
                     Row {
-                        width: parent.width
-                        height: 29
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 8
+                        height: 32
                         spacing: 5
 
                         TextField {
                             id: passwordField
-                            width: parent.width - 112
+                            width: parent.width - cancelPasswordButton.width - connectPasswordButton.width - parent.spacing * 2
                             height: parent.height
                             text: root.passwordInput
                             onTextChanged: root.passwordInput = text
@@ -972,69 +880,40 @@ PopupWindow {
                             echoMode: TextInput.Password
                             selectByMouse: true
                             focus: root.visible && root.passwordPromptVisible
-                            color: root.foregroundColor
-                            placeholderTextColor: "#777777"
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            leftPadding: 9
-                            rightPadding: 9
+                            color: Theme.text
+                            placeholderTextColor: Theme.muted
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            leftPadding: 12
+                            rightPadding: 12
                             background: Rectangle {
-                                color: "#090909"
-                                radius: 0
+                                color: Theme.base
+                                radius: height / 2
                                 border.width: 1
-                                border.color: "#414141"
+                                border.color: passwordField.activeFocus ? Theme.foam : Theme.stroke
                             }
                             Keys.onReturnPressed: root.submitPassword()
                         }
 
-                        Rectangle {
-                            width: 51
-                            height: parent.height
-                            radius: 0
-                            color: cancelPasswordMouse.containsMouse ? "#202020" : "#0c0c0c"
-                            border.width: 1
-                            border.color: "#373737"
-                            Text {
-                                anchors.centerIn: parent
-                                text: "Cancel"
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 9
-                            }
-                            MouseArea {
-                                id: cancelPasswordMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    root.passwordInput = "";
-                                    root.passwordPromptVisible = false;
-                                }
+                        SoftButton {
+                            id: cancelPasswordButton
+                            label: "Cancel"
+                            fontSize: 11
+                            variant: "ghost"
+                            onClicked: {
+                                root.passwordInput = "";
+                                root.passwordPromptVisible = false;
                             }
                         }
 
-                        Rectangle {
-                            width: 51
-                            height: parent.height
-                            radius: 0
-                            color: connectPasswordMouse.containsMouse ? "#202020" : "#0c0c0c"
-                            border.width: 1
-                            border.color: "#373737"
-                            Text {
-                                anchors.centerIn: parent
-                                text: "Connect"
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 9
-                            }
-                            MouseArea {
-                                id: connectPasswordMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: !root.busy
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.submitPassword()
-                            }
+                        SoftButton {
+                            id: connectPasswordButton
+                            label: "Connect"
+                            fontSize: 11
+                            variant: "accent"
+                            accent: Theme.foam
+                            enabled: !root.busy
+                            onClicked: root.submitPassword()
                         }
                     }
                 }
@@ -1044,109 +923,77 @@ PopupWindow {
                 id: ethernetPage
                 visible: root.activeTab === "ethernet"
                 width: parent.width
-                spacing: 7
-
-                Row {
-                    width: parent.width
-                    height: 21
-                    spacing: 7
-
-                    Text {
-                        text: "ETHERNET"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 12
-                        font.bold: false
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Text {
-                        text: root.ethernetStateLabel()
-                        color: root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        elide: Text.ElideRight
-                        width: parent.width - 100
-                    }
-                }
-
-                Column {
-                    width: parent.width
-                    spacing: 3
-
-                    Text {
-                        width: parent.width
-                        height: 16
-                        text: root.ethernetDevice ? "Interface: " + root.ethernetDevice : "Interface: not detected"
-                        color: root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                        elide: Text.ElideRight
-                    }
-
-                    Text {
-                        width: parent.width
-                        height: 16
-                        text: "IPv4: " + (root.ethernetIp || "unavailable")
-                        color: root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                        elide: Text.ElideRight
-                    }
-                }
+                spacing: 8
 
                 Rectangle {
-                    width: 112
-                    height: 28
-                    radius: 0
-                    color: ethernetToggleMouse.containsMouse ? "#1c1c1c" : "#0c0c0c"
-                    border.width: 1
-                    border.color: "#373737"
-                    opacity: root.busy || root.statusLoading || root.scanLoading || !root.ethernetDevice ? 0.5 : 1
+                    width: parent.width
+                    height: 62
+                    radius: 18
+                    color: root.ethernetConnected() ? Theme.tint(Theme.foam, 0.14) : Theme.surface
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: root.ethernetConnected() ? "Disconnect" : "Enable connection"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
+                    Icon {
+                        id: ethernetStateIcon
+                        x: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: Theme.icons.ethernet
+                        color: root.ethernetConnected() ? Theme.foam : Theme.muted
+                        font.pixelSize: 24
                     }
 
-                    MouseArea {
-                        id: ethernetToggleMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: root.networkManagerAvailable && !!root.ethernetDevice && !root.busy && !root.statusLoading && !root.scanLoading
-                        cursorShape: Qt.PointingHandCursor
+                    Column {
+                        anchors.left: ethernetStateIcon.right
+                        anchors.leftMargin: 12
+                        anchors.right: ethernetToggleButton.left
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+
+                        UiText {
+                            width: parent.width
+                            text: root.ethernetStateLabel()
+                            font.pixelSize: 13
+                            font.weight: Font.Bold
+                            elide: Text.ElideRight
+                        }
+
+                        UiText {
+                            width: parent.width
+                            text: root.ethernetDevice ? "Interface: " + root.ethernetDevice : "Interface: not detected"
+                            color: Theme.subtle
+                            font.pixelSize: 10
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    SoftButton {
+                        id: ethernetToggleButton
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        label: root.ethernetConnected() ? "Disconnect" : "Enable"
+                        fontSize: 11
+                        enabled: root.networkManagerAvailable && !!root.ethernetDevice && root.controlsIdle
                         onClicked: root.toggleEthernet()
                     }
                 }
 
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: "#303030"
-            }
-
-            Item {
-                width: parent.width
-                height: 24
-
-                Text {
-                    anchors.fill: parent
-                    text: root.errorMessage.length > 0
-                        ? root.errorMessage
-                        : (root.statusMessage.length > 0 ? root.statusMessage : root.connectivityLabel())
-                    color: root.errorMessage.length > 0 ? "#d4d4d4" : root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
-                    wrapMode: Text.NoWrap
+                StatTile {
+                    width: parent.width
+                    label: "IPv4 address"
+                    value: root.ethernetIp || "unavailable"
                 }
+            }
+
+            UiText {
+                width: parent.width
+                height: 18
+                text: root.errorMessage.length > 0
+                    ? root.errorMessage
+                    : (root.statusMessage.length > 0 ? root.statusMessage : root.connectivityLabel())
+                color: root.errorMessage.length > 0 ? Theme.love : Theme.subtle
+                font.pixelSize: 11
+                elide: Text.ElideRight
+                wrapMode: Text.NoWrap
             }
         }
     }

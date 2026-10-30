@@ -9,13 +9,9 @@ PopupWindow {
 
     property var anchorWindow: null
 
-    readonly property color panelColor: "#000000"
-    readonly property color foregroundColor: "#ffffff"
-    readonly property color mutedColor: "#b8b8b8"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
-    readonly property int maxWidth: 1080
-    readonly property int maxHeight: 780
+    readonly property int maxWidth: 1080 + Theme.popupPadX * 2
+    readonly property int maxHeight: 740 + Theme.popupPadY
     readonly property int outerMargin: 12
     readonly property int topGap: 8
 
@@ -210,8 +206,8 @@ PopupWindow {
                 icon: "utilities-terminal",
                 details: parsed.valid
                     ? (root.commandRunsDirectly(parsed.args)
-                        ? "SYSTEM ACTION · Enter executes directly, without a terminal or shell"
-                        : "COMMAND · Enter runs in Kitty without a shell")
+                        ? "System action · Enter executes directly, without a terminal or shell"
+                        : "Command · Enter runs in Kitty without a shell")
                     : (rawQuery.slice(1).trim().length === 0
                         ? "Type a command after >"
                         : parsed.error),
@@ -228,7 +224,7 @@ PopupWindow {
                 id: "web:" + terms,
                 name: "Search the web for “" + terms + "”",
                 icon: "web-browser",
-                details: "WEB SEARCH · Enter opens the default browser",
+                details: "Web search · Enter opens the default browser",
                 url: root.buildSearchUrl(terms)
             }];
         }
@@ -239,7 +235,7 @@ PopupWindow {
                 id: "github:" + terms,
                 name: "Search GitHub for “" + terms + "”",
                 icon: "github",
-                details: "GITHUB SEARCH · Enter opens github.com",
+                details: "GitHub search · Enter opens github.com",
                 url: "https://github.com/search?q=" + encodeURIComponent(terms)
             }];
         }
@@ -252,7 +248,7 @@ PopupWindow {
                 id: "calculator:" + rawQuery,
                 name: root.formatNumber(value),
                 icon: "accessories-calculator",
-                details: "CALCULATOR RESULT · Enter copies the result",
+                details: "Calculator result · Enter copies the result",
                 result: root.formatNumber(value)
             }];
         }
@@ -1090,7 +1086,7 @@ PopupWindow {
     height: root.anchorWindow && root.anchorWindow.screen
         ? Math.max(320, Math.min(
             root.maxHeight,
-            root.anchorWindow.screen.height - root.anchorWindow.height - root.topGap - root.outerMargin
+            root.anchorWindow.screen.height - root.anchorWindow.height
         ))
         : root.maxHeight
 
@@ -1100,8 +1096,8 @@ PopupWindow {
     // Use a native popup like the other modules. Its focus grab dismisses it
     // on outside click without creating a full-screen input surface.
     anchor.window: root.anchorWindow
-    anchor.rect.x: root.outerMargin
-    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + root.topGap : 34
+    anchor.rect.x: root.anchorWindow ? Math.round((root.anchorWindow.width - root.width) / 2) : root.outerMargin
+    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height : 34
     grabFocus: true
 
     function openPanel() {
@@ -1239,493 +1235,529 @@ PopupWindow {
         onActivated: root.closePanel()
     }
 
-    Rectangle {
-        id: outerSurface
-        anchors.fill: parent
-        color: root.panelColor
-        border.width: 1
-        border.color: "#ffffff"
-        radius: 0
-    }
+    readonly property var categoryAccents: [Theme.iris, Theme.foam, Theme.subtle, Theme.rose, Theme.gold, Theme.love]
+    readonly property int allAppsColumns: allAppsGrid.width >= 700 ? 6 : (allAppsGrid.width >= 460 ? 4 : 3)
 
-    Rectangle {
-        id: searchBar
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.topMargin: 14
-        anchors.leftMargin: 16
-        anchors.rightMargin: 16
-        height: 42
-        color: "#080808"
-        border.width: 1
-        border.color: "#505050"
-        radius: 0
+    // Tile shared by the quick picks and the full grid: icon over name.
+    component AppTile: Item {
+        id: tile
 
-        Text {
-            id: searchIcon
-            anchors.left: parent.left
-            anchors.leftMargin: 12
-            anchors.verticalCenter: parent.verticalCenter
-            text: ""
-            color: root.mutedColor
-            font.family: root.fontFamily
-            font.pixelSize: 16
+        required property var appData
+        property bool selected: false
+        property int iconSize: 40
+
+        signal activated(var mouse)
+        signal hoverStarted()
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Theme.radiusTile + 2
+            color: tile.selected
+                ? Theme.tint(Theme.iris, 0.22)
+                : (tileMouse.containsMouse ? Theme.surface : "transparent")
+            scale: tileMouse.pressed ? 0.95 : 1
+
+            Behavior on color {
+                ColorAnimation { duration: Theme.fast }
+            }
+
+            Behavior on scale {
+                NumberAnimation { duration: Theme.fast; easing.type: Easing.OutCubic }
+            }
         }
 
-        TextInput {
-            id: searchInput
-            anchors.left: searchIcon.right
-            anchors.leftMargin: 12
+        Icon {
             anchors.right: parent.right
-            anchors.rightMargin: 12
+            anchors.rightMargin: 8
             anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            color: root.foregroundColor
-            selectionColor: "#ffffff"
-            selectedTextColor: "#000000"
-            font.family: root.fontFamily
-            font.pixelSize: 15
-            verticalAlignment: TextInput.AlignVCenter
-            focus: root.visible
-            activeFocusOnTab: true
-            selectByMouse: true
-            clip: true
-
-            onTextChanged: {
-                // Editing the query cancels any pending destructive-command confirmation.
-                // A pending command must never run after the user changes the input.
-                if (root.commandConfirmationRequired) {
-                    root.commandConfirmationRequired = false;
-                    root.pendingCommandArgs = [];
-                    root.pendingCommandText = "";
-                }
-                root.searchQuery = text;
-                root.selectedIndex = 0;
-                root.launchError = "";
-                if (!root.applyingQuickSearch)
-                    root.categoryFilter = [];
-            }
-
-            Keys.onPressed: function(event) {
-                if (root.commandConfirmationRequired
-                    && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
-                    root.executePendingCommand();
-                    event.accepted = true;
-                } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_D) {
-                    root.toggleSelectedFavorite();
-                    event.accepted = true;
-                } else if ((event.modifiers & Qt.ControlModifier)
-                    && (event.modifiers & Qt.ShiftModifier)
-                    && event.key === Qt.Key_Delete) {
-                    root.clearHistory();
-                    event.accepted = true;
-                } else if ((event.modifiers & Qt.ControlModifier)
-                    && root.searchQuery.trim().length === 0
-                    && event.key >= Qt.Key_1 && event.key <= Qt.Key_6) {
-                    root.launchTopApplication(event.key - Qt.Key_1);
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    if (root.wallpaperMode && wallpaperSelectorLoader.item)
-                        wallpaperSelectorLoader.item.applySelected();
-                    else if (root.searchQuery.trim().length > 0)
-                        root.launchResult(root.searchResults[root.selectedIndex]);
-                    else
-                        root.launchApplication(root.allApplications[root.selectedIndex]);
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Down) {
-                    if (root.wallpaperMode && wallpaperSelectorLoader.item)
-                        wallpaperSelectorLoader.item.moveSelection(wallpaperSelectorLoader.item.columns);
-                    else {
-                        const step = root.searchQuery.trim().length > 0
-                            ? 1
-                            : (allAppsGrid.width >= 850 ? 5 : (allAppsGrid.width >= 560 ? 3 : 2));
-                        root.moveSelection(step);
-                    }
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Up) {
-                    if (root.wallpaperMode && wallpaperSelectorLoader.item)
-                        wallpaperSelectorLoader.item.moveSelection(-wallpaperSelectorLoader.item.columns);
-                    else {
-                        const step = root.searchQuery.trim().length > 0
-                            ? 1
-                            : (allAppsGrid.width >= 850 ? 5 : (allAppsGrid.width >= 560 ? 3 : 2));
-                        root.moveSelection(-step);
-                    }
-                    event.accepted = true;
-                } else if (root.wallpaperMode && event.key === Qt.Key_Right) {
-                    if (wallpaperSelectorLoader.item)
-                        wallpaperSelectorLoader.item.moveSelection(1);
-                    event.accepted = true;
-                } else if (root.wallpaperMode && event.key === Qt.Key_Left) {
-                    if (wallpaperSelectorLoader.item)
-                        wallpaperSelectorLoader.item.moveSelection(-1);
-                    event.accepted = true;
-                } else if (root.searchQuery.trim().length === 0 && event.key === Qt.Key_Right) {
-                    root.moveSelection(1);
-                    event.accepted = true;
-                } else if (root.searchQuery.trim().length === 0 && event.key === Qt.Key_Left) {
-                    root.moveSelection(-1);
-                    event.accepted = true;
-                }
-            }
+            anchors.topMargin: 6
+            visible: tile.appData.type !== "file" && tile.appData.type !== "directory"
+                && root.favoriteIds.indexOf(tile.appData.id) >= 0
+            text: Theme.icons.star
+            color: Theme.gold
+            font.pixelSize: 13
         }
 
-        Text {
-            z: -1
-            anchors.left: searchInput.left
-            anchors.right: searchInput.right
-            anchors.verticalCenter: searchInput.verticalCenter
-            text: "Search apps, files, wall, calculations, web (? ...) or commands (> ...)"
-            color: "#808080"
-            font.family: root.fontFamily
-            font.pixelSize: 15
-            visible: searchInput.text.length === 0
+        Column {
+            anchors.centerIn: parent
+            width: parent.width - 12
+            spacing: 6
+
+            IconImage {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: tile.iconSize
+                height: tile.iconSize
+                source: Quickshell.iconPath(
+                    tile.appData.icon || "application-x-executable",
+                    "application-x-executable"
+                )
+                asynchronous: true
+                scale: tileMouse.containsMouse || tile.selected ? 1.1 : 1
+
+                Behavior on scale {
+                    NumberAnimation { duration: Theme.normal; easing.type: Easing.OutBack }
+                }
+            }
+
+            UiText {
+                width: parent.width
+                text: tile.appData.name || tile.appData.id
+                font.pixelSize: 11
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+                maximumLineCount: 1
+            }
         }
 
         MouseArea {
+            id: tileMouse
+            z: 10
+            anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            z: 10
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: 36
-            acceptedButtons: Qt.LeftButton
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             preventStealing: true
-            onClicked: searchInput.forceActiveFocus()
+            onEntered: tile.hoverStarted()
+            onClicked: function(mouse) { tile.activated(mouse); }
         }
     }
 
-    Item {
-        id: mainContent
-        anchors.top: searchBar.bottom
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.topMargin: 12
-        anchors.bottomMargin: 12
-        anchors.leftMargin: 16
-        anchors.rightMargin: 16
-        clip: true
+    PanelSurface {
+        id: outerSurface
+        window: root
+        accent: Theme.iris
+        padding: 16
 
-        Item {
-            id: defaultHome
-            anchors.fill: parent
-            visible: root.searchQuery.trim().length === 0 && root.launchError.length === 0
-
-            Item {
-                id: launcherHeader
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                height: 36
-
-                Column {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 3
-
-                    Text {
-                        text: "APP LAUNCHER"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 17
-                        font.bold: false
-                        font.letterSpacing: 1.0
-                    }
-
-                    Text {
-                        text: root.allApplications.length + " INSTALLED APPLICATIONS  /  " + root.topApplications.length + " QUICK PICKS"
-                        color: root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                    }
-                }
-
-                Row {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 6
-                    visible: mainContent.width > 560
-
-                    Repeater {
-                        model: ["↑ ↓  NAVIGATE", "↵  LAUNCH", "ESC  CLOSE"]
-
-                        delegate: Rectangle {
-                            required property string modelData
-                            width: hintText.implicitWidth + 14
-                            height: 22
-                            color: "#080808"
-                            border.width: 1
-                            border.color: "#363636"
-
-                            Text {
-                                id: hintText
-                                anchors.centerIn: parent
-                                text: modelData
-                                color: root.mutedColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 10
-                            }
-                        }
-                    }
-                }
-            }
+        Rectangle {
+            id: searchBar
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 52
+            radius: 20
+            color: Theme.surface
+            border.width: 1
+            border.color: searchInput.activeFocus ? Theme.tint(Theme.iris, 0.5) : Theme.stroke
 
             Rectangle {
-                id: headerDivider
-                anchors.top: launcherHeader.bottom
-                anchors.topMargin: 9
+                id: searchIcon
                 anchors.left: parent.left
-                anchors.right: parent.right
-                height: 1
-                color: "#343434"
+                anchors.leftMargin: 9
+                anchors.verticalCenter: parent.verticalCenter
+                width: 34
+                height: 34
+                radius: 13
+                gradient: Theme.dusk
+
+                Icon {
+                    anchors.centerIn: parent
+                    text: root.queryMode === "command"
+                        ? ">"
+                        : (root.queryMode === "web" ? "?" : Theme.icons.search)
+                    color: Theme.onAccent
+                    font.pixelSize: 18
+                    font.weight: Font.Bold
+                }
             }
 
-            Item {
-                id: categoriesHeadingRow
-                anchors.top: headerDivider.bottom
-                anchors.topMargin: 12
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: 14
+            UiText {
+                anchors.left: searchInput.left
+                anchors.right: searchInput.right
+                anchors.verticalCenter: searchInput.verticalCenter
+                text: "Search apps, files, wall, calculations, web (? ...) or commands (> ...)"
+                color: Theme.muted
+                font.pixelSize: 15
+                font.weight: Font.Normal
+                elide: Text.ElideRight
+                visible: searchInput.text.length === 0
+            }
 
-                Text {
+            TextInput {
+                id: searchInput
+                anchors.left: searchIcon.right
+                anchors.leftMargin: 12
+                anchors.right: parent.right
+                anchors.rightMargin: 16
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                color: Theme.text
+                selectionColor: Theme.iris
+                selectedTextColor: Theme.onAccent
+                font.family: Theme.fontFamily
+                font.pixelSize: 15
+                font.weight: Font.Medium
+                verticalAlignment: TextInput.AlignVCenter
+                focus: root.visible
+                activeFocusOnTab: true
+                selectByMouse: true
+                clip: true
+    
+                onTextChanged: {
+                    // Editing the query cancels any pending destructive-command confirmation.
+                    // A pending command must never run after the user changes the input.
+                    if (root.commandConfirmationRequired) {
+                        root.commandConfirmationRequired = false;
+                        root.pendingCommandArgs = [];
+                        root.pendingCommandText = "";
+                    }
+                    root.searchQuery = text;
+                    root.selectedIndex = 0;
+                    root.launchError = "";
+                    if (!root.applyingQuickSearch)
+                        root.categoryFilter = [];
+                }
+    
+                Keys.onPressed: function(event) {
+                    if (root.commandConfirmationRequired
+                        && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                        root.executePendingCommand();
+                        event.accepted = true;
+                    } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_D) {
+                        root.toggleSelectedFavorite();
+                        event.accepted = true;
+                    } else if ((event.modifiers & Qt.ControlModifier)
+                        && (event.modifiers & Qt.ShiftModifier)
+                        && event.key === Qt.Key_Delete) {
+                        root.clearHistory();
+                        event.accepted = true;
+                    } else if ((event.modifiers & Qt.ControlModifier)
+                        && root.searchQuery.trim().length === 0
+                        && event.key >= Qt.Key_1 && event.key <= Qt.Key_6) {
+                        root.launchTopApplication(event.key - Qt.Key_1);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        if (root.wallpaperMode && wallpaperSelectorLoader.item)
+                            wallpaperSelectorLoader.item.applySelected();
+                        else if (root.searchQuery.trim().length > 0)
+                            root.launchResult(root.searchResults[root.selectedIndex]);
+                        else
+                            root.launchApplication(root.allApplications[root.selectedIndex]);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Down) {
+                        if (root.wallpaperMode && wallpaperSelectorLoader.item)
+                            wallpaperSelectorLoader.item.moveSelection(wallpaperSelectorLoader.item.columns);
+                        else {
+                            const step = root.searchQuery.trim().length > 0
+                                ? 1
+                                : root.allAppsColumns;
+                            root.moveSelection(step);
+                        }
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Up) {
+                        if (root.wallpaperMode && wallpaperSelectorLoader.item)
+                            wallpaperSelectorLoader.item.moveSelection(-wallpaperSelectorLoader.item.columns);
+                        else {
+                            const step = root.searchQuery.trim().length > 0
+                                ? 1
+                                : root.allAppsColumns;
+                            root.moveSelection(-step);
+                        }
+                        event.accepted = true;
+                    } else if (root.wallpaperMode && event.key === Qt.Key_Right) {
+                        if (wallpaperSelectorLoader.item)
+                            wallpaperSelectorLoader.item.moveSelection(1);
+                        event.accepted = true;
+                    } else if (root.wallpaperMode && event.key === Qt.Key_Left) {
+                        if (wallpaperSelectorLoader.item)
+                            wallpaperSelectorLoader.item.moveSelection(-1);
+                        event.accepted = true;
+                    } else if (root.searchQuery.trim().length === 0 && event.key === Qt.Key_Right) {
+                        root.moveSelection(1);
+                        event.accepted = true;
+                    } else if (root.searchQuery.trim().length === 0 && event.key === Qt.Key_Left) {
+                        root.moveSelection(-1);
+                        event.accepted = true;
+                    }
+                }
+            }
+
+            MouseArea {
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                z: 10
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 46
+                acceptedButtons: Qt.LeftButton
+                preventStealing: true
+                onClicked: searchInput.forceActiveFocus()
+            }
+        }
+
+        Item {
+            id: mainContent
+            anchors.top: searchBar.bottom
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.topMargin: 14
+            clip: true
+
+            Item {
+                id: defaultHome
+                anchors.fill: parent
+                visible: root.searchQuery.trim().length === 0 && root.launchError.length === 0
+
+                // Rail: library summary, categories and shortcuts.
+                Rectangle {
+                    id: categoryRail
                     anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "CATEGORIES"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 12
-                    font.bold: false
-                    font.letterSpacing: 0.8
-                }
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 208
+                    radius: 20
+                    color: Theme.surface
 
-                Text {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "FILTER THE LIBRARY"
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                }
-            }
+                    Column {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 10
+                        spacing: 4
 
-            Item {
-                id: quickSearchArea
-                anchors.top: categoriesHeadingRow.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.topMargin: 8
-                height: quickSearchGrid.columns >= 6 ? 36 : 74
+                        Item {
+                            width: parent.width
+                            height: 56
 
-                Grid {
-                    id: quickSearchGrid
-                    anchors.fill: parent
-                    columns: quickSearchArea.width >= 750 ? 6 : (quickSearchArea.width >= 400 ? 3 : 2)
-                    spacing: 6
-
-                    Repeater {
-                        model: root.quickSearches
-
-                        delegate: Item {
-                            id: quickSearchTile
-                            required property var modelData
-                            required property int index
-
-                            width: Math.floor((quickSearchArea.width - (quickSearchGrid.columns - 1) * quickSearchGrid.spacing) / quickSearchGrid.columns)
-                            height: 34
-
-                            Rectangle {
-                                anchors.fill: parent
-                                color: quickSearchMouse.containsMouse ? "#181818" : "#080808"
-                                border.width: 1
-                                border.color: quickSearchMouse.containsMouse ? "#666666" : "#363636"
-                            }
-
-                            Text {
-                                id: quickSearchIcon
+                            Column {
                                 anchors.left: parent.left
-                                anchors.leftMargin: 9
+                                anchors.leftMargin: 6
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: quickSearchTile.modelData.icon
-                                color: root.mutedColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 13
-                            }
 
-                            Text {
-                                id: quickSearchLabel
-                                anchors.left: quickSearchIcon.right
-                                anchors.leftMargin: 7
-                                anchors.right: quickSearchCount.left
-                                anchors.rightMargin: 4
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: quickSearchTile.modelData.label
-                                color: root.foregroundColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 11
-                                elide: Text.ElideRight
-                            }
+                                UiText {
+                                    text: "Applications"
+                                    font.family: Theme.displayFont
+                                    font.pixelSize: 20
+                                    font.weight: Font.Bold
+                                }
 
-                            Text {
-                                id: quickSearchCount
-                                anchors.right: parent.right
-                                anchors.rightMargin: 8
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: String(root.categoryApplicationCount(quickSearchTile.modelData))
-                                color: root.mutedColor
-                                font.family: root.fontFamily
-                                font.pixelSize: 10
-                            }
-
-                            MouseArea {
-                                id: quickSearchMouse
-                                z: 10
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                acceptedButtons: Qt.LeftButton
-                                preventStealing: true
-                                onClicked: root.applyQuickSearch(quickSearchTile.modelData)
+                                UiText {
+                                    text: root.allApplications.length + " installed"
+                                    color: Theme.subtle
+                                    font.pixelSize: 11
+                                }
                             }
                         }
-                    }
-                }
-            }
 
-            Item {
-                id: quickLaunchHeadingRow
-                anchors.top: quickSearchArea.bottom
-                anchors.topMargin: 13
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: 14
+                        Repeater {
+                            model: root.quickSearches
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "FAVORITES & RECENT"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 12
-                    font.bold: false
-                    font.letterSpacing: 0.8
-                }
+                            delegate: Rectangle {
+                                id: quickSearchTile
+                                required property var modelData
+                                required property int index
+                                readonly property color tileAccent: root.categoryAccents[index % root.categoryAccents.length]
 
-                Text {
-                    id: quickLaunchHint
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "CTRL+1–6 LAUNCH  ·  CTRL+SHIFT+DEL CLEARS HISTORY"
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    visible: mainContent.width > 560
-                }
-            }
+                                width: parent.width
+                                height: 42
+                                radius: 14
+                                color: quickSearchMouse.containsMouse ? Theme.tint(tileAccent, 0.18) : "transparent"
 
-            GridView {
-                id: topAppsGrid
-                anchors.top: quickLaunchHeadingRow.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.topMargin: 8
-                height: cellHeight * Math.ceil(root.topApplications.length / (width >= 750 ? 6 : 3))
-                clip: true
-                cellWidth: width / (width >= 750 ? 6 : 3)
-                cellHeight: 88
-                model: topApplicationsModel
-                interactive: false
-                boundsBehavior: Flickable.StopAtBounds
+                                Behavior on color {
+                                    ColorAnimation { duration: Theme.fast }
+                                }
 
-                delegate: Item {
-                    id: topAppTile
-                    required property var modelData
-                    required property int index
+                                Rectangle {
+                                    id: quickSearchBadge
+                                    x: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 30
+                                    height: 30
+                                    radius: 11
+                                    color: Theme.tint(quickSearchTile.tileAccent, 0.18)
 
-                    width: topAppsGrid.cellWidth - 7
-                    height: topAppsGrid.cellHeight - 7
+                                    Icon {
+                                        anchors.centerIn: parent
+                                        text: quickSearchTile.modelData.icon
+                                        color: quickSearchTile.tileAccent
+                                        font.pixelSize: 14
+                                    }
+                                }
 
-                    Rectangle {
-                        anchors.fill: parent
-                        color: topAppMouse.containsMouse ? "#171717" : "#070707"
-                        border.width: 1
-                        border.color: topAppMouse.containsMouse ? "#727272" : "#343434"
-                    }
+                                UiText {
+                                    anchors.left: quickSearchBadge.right
+                                    anchors.leftMargin: 10
+                                    anchors.right: quickSearchCount.left
+                                    anchors.rightMargin: 4
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: quickSearchTile.modelData.label
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
 
-                    Text {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 7
-                        anchors.top: parent.top
-                        anchors.topMargin: 4
-                        text: topAppTile.modelData.type === "app"
-                            && root.favoriteIds.indexOf(topAppTile.modelData.id) >= 0 ? "★" : ""
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 12
-                    }
+                                UiText {
+                                    id: quickSearchCount
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 10
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: String(root.categoryApplicationCount(quickSearchTile.modelData))
+                                    color: Theme.subtle
+                                    font.pixelSize: 11
+                                }
 
-                    IconImage {
-                        id: topAppIcon
-                        width: 27
-                        height: 27
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        source: Quickshell.iconPath(
-                            topAppTile.modelData.icon || "application-x-executable",
-                            "application-x-executable"
-                        )
-                        asynchronous: true
+                                MouseArea {
+                                    id: quickSearchMouse
+                                    z: 10
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    acceptedButtons: Qt.LeftButton
+                                    preventStealing: true
+                                    onClicked: root.applyQuickSearch(quickSearchTile.modelData)
+                                }
+                            }
+                        }
                     }
 
                     Column {
-                        anchors.left: topAppIcon.right
-                        anchors.leftMargin: 9
+                        anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.rightMargin: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 4
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 16
+                        spacing: 5
 
-                        Text {
-                            width: parent.width
-                            text: topAppTile.modelData.name || topAppTile.modelData.id
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            wrapMode: Text.Wrap
-                            maximumLineCount: 2
-                            elide: Text.ElideRight
-                        }
+                        Repeater {
+                            model: [
+                                { key: "↑ ↓ ← →", action: "Navigate" },
+                                { key: "Enter", action: "Launch" },
+                                { key: "Ctrl 1–6", action: "Quick pick" },
+                                { key: "Ctrl D", action: "Favorite" },
+                                { key: "Esc", action: "Close" }
+                            ]
 
-                        Text {
-                            width: parent.width
-                            text: String((topAppTile.modelData.categories || [])[0] || "Application").toUpperCase()
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
+                            delegate: Item {
+                                required property var modelData
+                                width: parent.width
+                                height: 18
+
+                                UiText {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: parent.modelData.action
+                                    color: Theme.subtle
+                                    font.pixelSize: 10
+                                }
+
+                                UiText {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: parent.modelData.key
+                                    color: Theme.muted
+                                    font.pixelSize: 10
+                                    font.weight: Font.DemiBold
+                                }
+                            }
                         }
                     }
+                }
 
-                    MouseArea {
-                        id: topAppMouse
-                        z: 10
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        preventStealing: true
-                        onClicked: function(mouse) {
-                            if (mouse.button === Qt.RightButton) {
-                                if (topAppTile.modelData.type === "app")
-                                    root.toggleFavorite(topAppTile.modelData);
+                UiText {
+                    id: quickLaunchHeading
+                    anchors.left: categoryRail.right
+                    anchors.leftMargin: 18
+                    anchors.top: parent.top
+                    height: 22
+                    text: "Favorites & recent"
+                    font.pixelSize: 14
+                    font.weight: Font.Bold
+                }
+
+                UiText {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: quickLaunchHeading.verticalCenter
+                    text: "Ctrl+Shift+Del clears history"
+                    color: Theme.muted
+                    font.pixelSize: 10
+                }
+
+                GridView {
+                    id: topAppsGrid
+                    anchors.top: quickLaunchHeading.bottom
+                    anchors.left: quickLaunchHeading.left
+                    anchors.right: parent.right
+                    anchors.topMargin: 6
+                    height: cellHeight * Math.ceil(root.topApplications.length / 6)
+                    clip: true
+                    cellWidth: width / 6
+                    cellHeight: 100
+                    model: topApplicationsModel
+                    interactive: false
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    delegate: Item {
+                        id: topAppTile
+                        required property var modelData
+                        required property int index
+
+                        width: topAppsGrid.cellWidth
+                        height: topAppsGrid.cellHeight
+
+                        AppTile {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            appData: topAppTile.modelData
+                            iconSize: 44
+                            onActivated: function(mouse) {
+                                if (mouse.button === Qt.RightButton) {
+                                    if (topAppTile.modelData.type === "app")
+                                        root.toggleFavorite(topAppTile.modelData);
+                                    else
+                                        root.removeHistoryItem(topAppTile.modelData);
+                                } else {
+                                    root.launchResult(topAppTile.modelData);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                UiText {
+                    id: allApplicationsHeading
+                    anchors.left: quickLaunchHeading.left
+                    anchors.top: topAppsGrid.bottom
+                    anchors.topMargin: 8
+                    height: 22
+                    text: "All applications"
+                    font.pixelSize: 14
+                    font.weight: Font.Bold
+                }
+
+                GridView {
+                    id: allAppsGrid
+                    anchors.top: allApplicationsHeading.bottom
+                    anchors.left: quickLaunchHeading.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.topMargin: 6
+                    clip: true
+                    cellWidth: width / root.allAppsColumns
+                    cellHeight: 92
+                    model: allApplicationsModel
+                    currentIndex: root.selectedIndex
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    delegate: Item {
+                        id: allAppTile
+                        required property var modelData
+                        required property int index
+
+                        width: allAppsGrid.cellWidth
+                        height: allAppsGrid.cellHeight
+
+                        AppTile {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            appData: allAppTile.modelData
+                            iconSize: 38
+                            selected: allAppTile.index === root.selectedIndex
+                            onHoverStarted: root.selectedIndex = allAppTile.index
+                            onActivated: function(mouse) {
+                                root.selectedIndex = allAppTile.index;
+                                if (mouse.button === Qt.RightButton)
+                                    root.toggleFavorite(allAppTile.modelData);
                                 else
-                                    root.removeHistoryItem(topAppTile.modelData);
-                            } else {
-                                root.launchResult(topAppTile.modelData);
+                                    root.launchApplication(allAppTile.modelData);
                             }
                         }
                     }
@@ -1733,695 +1765,501 @@ PopupWindow {
             }
 
             Item {
-                id: allApplicationsHeadingRow
-                anchors.top: topAppsGrid.bottom
-                anchors.topMargin: 11
+                id: resultsHeader
+                anchors.top: parent.top
                 anchors.left: parent.left
                 anchors.right: parent.right
-                height: 14
+                height: 24
+                visible: root.searchQuery.trim().length > 0 && !root.wallpaperMode && root.launchError.length === 0
 
-                Text {
+                UiText {
                     anchors.left: parent.left
+                    anchors.leftMargin: 4
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "INSTALLED APPLICATIONS"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 12
-                    font.bold: false
-                    font.letterSpacing: 0.8
+                    text: "Search results"
+                    font.pixelSize: 14
+                    font.weight: Font.Bold
                 }
 
-                Text {
+                UiText {
                     anchors.right: parent.right
+                    anchors.rightMargin: 4
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.allApplications.length + " APPS  ·  A–Z"
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
+                    text: root.searchResults.length + (root.searchResults.length === 1 ? " result" : " results")
+                    color: Theme.subtle
+                    font.pixelSize: 11
                 }
             }
 
-            GridView {
-                id: allAppsGrid
-                anchors.top: allApplicationsHeadingRow.bottom
+            ListView {
+                id: resultsList
+                anchors.top: resultsHeader.bottom
+                anchors.topMargin: 8
+                anchors.bottom: parent.bottom
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.topMargin: 7
+                visible: root.searchQuery.trim().length > 0
+                    && !root.wallpaperMode
+                    && root.searchResults.length > 0
+                    && root.launchError.length === 0
                 clip: true
-                cellWidth: width / (width >= 850 ? 5 : (width >= 560 ? 3 : 2))
-                cellHeight: 69
-                model: allApplicationsModel
+                spacing: 4
+                model: filteredApplicationsModel
                 currentIndex: root.selectedIndex
                 boundsBehavior: Flickable.StopAtBounds
 
                 delegate: Item {
-                    id: allAppTile
+                    id: resultRow
                     required property var modelData
                     required property int index
+                    onModelDataChanged: if (specialModeIcon) specialModeIcon.requestPaint()
 
-                    width: allAppsGrid.cellWidth - 7
-                    height: allAppsGrid.cellHeight - 6
+                    readonly property bool isSelected: index === root.selectedIndex
+
+                    width: resultsList.width
+                    height: 62
 
                     Rectangle {
                         anchors.fill: parent
-                        color: index === root.selectedIndex
-                            ? "#171717"
-                            : (allAppMouse.containsMouse ? "#111111" : "#050505")
-                        border.width: 1
-                        border.color: index === root.selectedIndex
-                            ? "#777777"
-                            : (allAppMouse.containsMouse ? "#555555" : "#282828")
+                        radius: 18
+                        color: resultRow.isSelected
+                            ? Theme.tint(Theme.iris, 0.2)
+                            : (resultMouse.containsMouse ? Theme.surface : "transparent")
+
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.fast }
+                        }
                     }
 
-                    Rectangle {
-                        width: 2
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        color: "#ffffff"
-                        visible: index === root.selectedIndex
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 6
-                        anchors.top: parent.top
-                        anchors.topMargin: 3
-                        text: root.favoriteIds.indexOf(allAppTile.modelData.id) >= 0 ? "★" : ""
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                    }
-
+                    // Command and web modes use a small vector icon drawn here,
+                    // rather than desktop-theme icons that may resolve to a missing-icon tile.
                     IconImage {
-                        id: allAppIcon
-                        width: 26
-                        height: 26
+                        id: resultIcon
+                        width: 34
+                        height: 34
                         anchors.left: parent.left
-                        anchors.leftMargin: 10
+                        anchors.leftMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
+                        visible: resultRow.modelData.type === "app"
                         source: Quickshell.iconPath(
-                            allAppTile.modelData.icon || "application-x-executable",
+                            resultRow.modelData.icon || "application-x-executable",
                             "application-x-executable"
                         )
                         asynchronous: true
                     }
 
-                    Column {
-                        anchors.left: allAppIcon.right
-                        anchors.leftMargin: 9
-                        anchors.right: parent.right
-                        anchors.rightMargin: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 4
+                            Canvas {
+                                id: specialModeIcon
+                                width: 30
+                                height: 30
+                                anchors.left: resultIcon.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: resultRow.modelData.type !== "app"
+                                onPaint: {
+                                    var ctx = getContext("2d");
+                                    ctx.clearRect(0, 0, width, height);
+                                    ctx.strokeStyle = Theme.iris.toString();
+                                    ctx.fillStyle = Theme.iris.toString();
+                                    ctx.lineWidth = 1.7;
+                                    ctx.lineCap = "round";
+                                    ctx.lineJoin = "round";
+            
+                                    if (resultRow.modelData.type === "command") {
+                                        // Terminal window, prompt chevron and cursor.
+                                        ctx.strokeRect(3.5, 4.5, 23, 21);
+                                        ctx.beginPath();
+                                        ctx.moveTo(8, 10);
+                                        ctx.lineTo(12, 13.5);
+                                        ctx.lineTo(8, 17);
+                                        ctx.moveTo(14.5, 17);
+                                        ctx.lineTo(20, 17);
+                                        ctx.stroke();
+                                    } else if (resultRow.modelData.type === "calculator") {
+                                        // Calculator outline, display and four clear key marks.
+                                        ctx.strokeRect(6.5, 2.5, 17, 25);
+                                        ctx.strokeRect(9.5, 5.5, 11, 5);
+                                        ctx.beginPath();
+                                        ctx.moveTo(10, 14);
+                                        ctx.lineTo(12, 14);
+                                        ctx.moveTo(17, 14);
+                                        ctx.lineTo(19, 14);
+                                        ctx.moveTo(10, 18);
+                                        ctx.lineTo(12, 18);
+                                        ctx.moveTo(17, 18);
+                                        ctx.lineTo(19, 18);
+                                        ctx.moveTo(10, 22);
+                                        ctx.lineTo(12, 22);
+                                        ctx.moveTo(17, 22);
+                                        ctx.lineTo(19, 22);
+                                        ctx.stroke();
+                                    } else if (resultRow.modelData.type === "web") {
+                                        // Magnifying glass for web and GitHub search.
+                                        ctx.beginPath();
+                                        ctx.arc(12, 12, 7, 0, Math.PI * 2);
+                                        ctx.moveTo(17.2, 17.2);
+                                        ctx.lineTo(23.5, 23.5);
+                                        ctx.stroke();
+                                    } else if (resultRow.modelData.type === "directory"
+                                            || root.fileIconKind(resultRow.modelData) === "folder") {
+                                        // Folder with a top tab.
+                                        ctx.beginPath();
+                                        ctx.moveTo(3.5, 8.5);
+                                        ctx.lineTo(11, 8.5);
+                                        ctx.lineTo(13.5, 11.5);
+                                        ctx.lineTo(26.5, 11.5);
+                                        ctx.lineTo(24.5, 25.5);
+                                        ctx.lineTo(4.5, 25.5);
+                                        ctx.closePath();
+                                        ctx.moveTo(3.5, 8.5);
+                                        ctx.lineTo(5, 23.5);
+                                        ctx.stroke();
+                                    } else {
+                                        // Folded-corner document, customized by file type.
+                                        const kind = root.fileIconKind(resultRow.modelData);
+                                        ctx.beginPath();
+                                        ctx.moveTo(7, 3);
+                                        ctx.lineTo(18, 3);
+                                        ctx.lineTo(24, 9);
+                                        ctx.lineTo(24, 27);
+                                        ctx.lineTo(7, 27);
+                                        ctx.closePath();
+                                        ctx.moveTo(18, 3);
+                                        ctx.lineTo(18, 9);
+                                        ctx.lineTo(24, 9);
+                                        ctx.stroke();
+            
+                                        if (kind === "image") {
+                                            ctx.strokeRect(10, 13, 11, 8);
+                                            ctx.beginPath();
+                                            ctx.arc(18, 15.5, 1.2, 0, Math.PI * 2);
+                                            ctx.moveTo(11, 20);
+                                            ctx.lineTo(14.5, 16.5);
+                                            ctx.lineTo(17, 19);
+                                            ctx.lineTo(19, 17.5);
+                                            ctx.lineTo(21, 20);
+                                            ctx.stroke();
+                                        } else if (kind === "pdf") {
+                                            ctx.font = "bold 6px sans-serif";
+                                            ctx.fillText("PDF", 9, 19);
+                                            ctx.beginPath();
+                                            ctx.moveTo(10, 22);
+                                            ctx.lineTo(21, 22);
+                                            ctx.stroke();
+                                        } else if (kind === "code") {
+                                            ctx.beginPath();
+                                            ctx.moveTo(13, 14);
+                                            ctx.lineTo(10, 17);
+                                            ctx.lineTo(13, 20);
+                                            ctx.moveTo(18, 14);
+                                            ctx.lineTo(21, 17);
+                                            ctx.lineTo(18, 20);
+                                            ctx.stroke();
+                                        } else if (kind === "archive") {
+                                            ctx.strokeRect(10, 13, 11, 9);
+                                            ctx.beginPath();
+                                            ctx.moveTo(15.5, 13);
+                                            ctx.lineTo(15.5, 22);
+                                            ctx.moveTo(14, 15);
+                                            ctx.lineTo(17, 15);
+                                            ctx.moveTo(14, 18);
+                                            ctx.lineTo(17, 18);
+                                            ctx.stroke();
+                                        } else if (kind === "audio") {
+                                            ctx.beginPath();
+                                            ctx.moveTo(12, 20);
+                                            ctx.lineTo(12, 14);
+                                            ctx.lineTo(20, 12);
+                                            ctx.lineTo(20, 19);
+                                            ctx.stroke();
+                                            ctx.beginPath();
+                                            ctx.arc(10.5, 21, 2.5, 0, Math.PI * 2);
+                                            ctx.arc(18.5, 19.5, 2.5, 0, Math.PI * 2);
+                                            ctx.stroke();
+                                        } else if (kind === "video") {
+                                            ctx.strokeRect(10, 13, 11, 8);
+                                            ctx.beginPath();
+                                            ctx.moveTo(14, 15);
+                                            ctx.lineTo(18, 17);
+                                            ctx.lineTo(14, 19);
+                                            ctx.closePath();
+                                            ctx.stroke();
+                                        } else if (kind === "spreadsheet") {
+                                            ctx.strokeRect(10, 13, 11, 9);
+                                            ctx.beginPath();
+                                            ctx.moveTo(10, 16);
+                                            ctx.lineTo(21, 16);
+                                            ctx.moveTo(10, 19);
+                                            ctx.lineTo(21, 19);
+                                            ctx.moveTo(15.5, 13);
+                                            ctx.lineTo(15.5, 22);
+                                            ctx.stroke();
+                                        } else if (kind === "presentation") {
+                                            ctx.strokeRect(10, 13, 11, 7);
+                                            ctx.beginPath();
+                                            ctx.moveTo(15.5, 20);
+                                            ctx.lineTo(15.5, 23);
+                                            ctx.moveTo(12, 23);
+                                            ctx.lineTo(19, 23);
+                                            ctx.stroke();
+                                        } else if (kind === "font") {
+                                            ctx.font = "bold 10px sans-serif";
+                                            ctx.fillText("Aa", 10, 20);
+                                        } else if (kind === "executable") {
+                                            ctx.beginPath();
+                                            ctx.moveTo(12, 13);
+                                            ctx.lineTo(12, 21);
+                                            ctx.lineTo(19, 17);
+                                            ctx.closePath();
+                                            ctx.stroke();
+                                        } else {
+                                            // Generic document and text: content lines.
+                                            ctx.beginPath();
+                                            ctx.moveTo(10, 14);
+                                            ctx.lineTo(21, 14);
+                                            ctx.moveTo(10, 17.5);
+                                            ctx.lineTo(21, 17.5);
+                                            ctx.moveTo(10, 21);
+                                            ctx.lineTo(19, 21);
+                                            ctx.stroke();
+                                        }
+                                    }
+                                }
+                                onVisibleChanged: if (visible) requestPaint()
+                                Component.onCompleted: requestPaint()
+                            }
 
-                        Text {
+                    Column {
+                        anchors.left: resultIcon.right
+                        anchors.leftMargin: 14
+                        anchors.right: parent.right
+                        anchors.rightMargin: resultRow.modelData.type === "app" ? 48 : 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+
+                        UiText {
                             width: parent.width
-                            text: allAppTile.modelData.name || allAppTile.modelData.id
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            wrapMode: Text.Wrap
-                            maximumLineCount: 2
+                            text: resultRow.modelData.name || resultRow.modelData.id
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
                             elide: Text.ElideRight
                         }
 
-                        Text {
+                        UiText {
                             width: parent.width
-                            text: String((allAppTile.modelData.categories || [])[0] || "Application").toUpperCase()
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 9
+                            text: resultRow.modelData.details || resultRow.modelData.genericName
+                                || resultRow.modelData.comment || String((resultRow.modelData.categories || [])[0] || "Application")
+                            color: Theme.subtle
+                            font.pixelSize: 12
+                            font.weight: Font.Normal
                             elide: Text.ElideRight
                         }
                     }
 
+                    Icon {
+                        id: resultFavoriteIcon
+                        z: 11
+                        anchors.right: parent.right
+                        anchors.rightMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: resultRow.modelData.type === "app"
+                        readonly property bool isFavorite: visible && root.favoriteIds.indexOf(resultRow.modelData.id) >= 0
+                        text: isFavorite ? Theme.icons.star : Theme.icons.starOutline
+                        color: isFavorite ? Theme.gold : Theme.muted
+                        font.pixelSize: 18
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -5
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.toggleFavorite(resultRow.modelData)
+                        }
+                    }
+
                     MouseArea {
-                        id: allAppMouse
+                        id: resultMouse
                         z: 10
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         preventStealing: true
-                        onEntered: root.selectedIndex = allAppTile.index
+                        onEntered: root.selectedIndex = resultRow.index
                         onClicked: function(mouse) {
-                            root.selectedIndex = allAppTile.index;
-                            if (mouse.button === Qt.RightButton)
-                                root.toggleFavorite(allAppTile.modelData);
-                            else
-                                root.launchApplication(allAppTile.modelData);
+                            root.selectedIndex = resultRow.index;
+                            if (mouse.button === Qt.RightButton) {
+                                if (resultRow.modelData.type === "app")
+                                    root.toggleFavorite(resultRow.modelData);
+                                else
+                                    root.removeHistoryItem(resultRow.modelData);
+                            } else {
+                                root.launchResult(resultRow.modelData);
+                            }
                         }
                     }
                 }
+            }
+
+            Loader {
+                id: wallpaperSelectorLoader
+                anchors.fill: parent
+                z: 30
+                active: root.wallpaperMode
+                visible: active
+                source: "WallpaperSelector.qml"
+
+                onLoaded: {
+                    if (item)
+                        item.filterText = root.wallpaperFilterText;
+                }
+            }
+
+            Connections {
+                target: wallpaperSelectorLoader.item
+                function onWallpaperApplied(path) {
+                    root.closePanel();
+                }
+            }
+
+            Column {
+                anchors.centerIn: parent
+                spacing: 6
+                visible: root.searchQuery.trim().length > 0
+                    && !root.wallpaperMode
+                    && root.searchResults.length === 0
+                    && root.launchError.length === 0
+
+                UiText {
+                    width: mainContent.width - 40
+                    text: "No results found"
+                    font.family: Theme.displayFont
+                    font.pixelSize: 20
+                    font.weight: Font.Bold
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                UiText {
+                    width: mainContent.width - 40
+                    text: root.fileIndexReady ? "Try another search or use ? for web, > for commands." : "Applications are ready; file indexing is still running."
+                    color: Theme.subtle
+                    font.pixelSize: 12
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
+                }
+            }
+
+            Column {
+                anchors.centerIn: parent
+                spacing: 6
+                visible: root.searchQuery.trim().length === 0
+                    && root.allApplications.length === 0
+                    && root.launchError.length === 0
+
+                UiText {
+                    width: mainContent.width - 40
+                    text: "No applications found"
+                    font.family: Theme.displayFont
+                    font.pixelSize: 20
+                    font.weight: Font.Bold
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                UiText {
+                    width: mainContent.width - 40
+                    text: "Installed desktop entries will appear here."
+                    color: Theme.subtle
+                    font.pixelSize: 12
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
+
+            UiText {
+                anchors.centerIn: parent
+                visible: root.launchError.length > 0
+                text: root.launchError
+                color: Theme.love
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                width: Math.min(parent.width - 40, 420)
             }
         }
 
         Item {
-            id: resultsHeader
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: 22
-            visible: root.searchQuery.trim().length > 0 && !root.wallpaperMode && root.launchError.length === 0
+            id: commandConfirmationOverlay
+            anchors.fill: parent
+            anchors.margins: -outerSurface.padding
+            visible: root.visible && root.commandConfirmationRequired
+            z: 1000
 
-            Text {
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                text: "SEARCH RESULTS"
-                color: root.foregroundColor
-                font.family: root.fontFamily
-                font.pixelSize: 12
-                font.bold: false
-                font.letterSpacing: 0.8
-            }
-
-            Text {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.searchResults.length + " RESULTS"
-                color: root.mutedColor
-                font.family: root.fontFamily
-                font.pixelSize: 11
-            }
-        }
-
-        Rectangle {
-            anchors.top: resultsHeader.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: 1
-            color: "#333333"
-            visible: resultsHeader.visible
-        }
-
-        ListView {
-            id: resultsList
-            anchors.top: resultsHeader.bottom
-            anchors.topMargin: 7
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            visible: root.searchQuery.trim().length > 0
-                && !root.wallpaperMode
-                && root.searchResults.length > 0
-                && root.launchError.length === 0
-            clip: true
-            spacing: 3
-            model: filteredApplicationsModel
-            currentIndex: root.selectedIndex
-            boundsBehavior: Flickable.StopAtBounds
-
-            delegate: Item {
-                id: resultRow
-                required property var modelData
-                required property int index
-                onModelDataChanged: if (specialModeIcon) specialModeIcon.requestPaint()
-
-                width: resultsList.width
-                height: 58
-
-                Rectangle {
+            Rectangle {
+                anchors.fill: parent
+                radius: Theme.radiusCard
+                color: Theme.tint(Theme.base, 0.82)
+                MouseArea {
                     anchors.fill: parent
-                    color: index === root.selectedIndex
-                        ? "#171717"
-                        : (resultMouse.containsMouse ? "#101010" : "#050505")
-                    border.width: 1
-                    border.color: index === root.selectedIndex ? "#777777" : "#292929"
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                    onClicked: {}
                 }
+            }
 
-                Rectangle {
-                    width: 2
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    color: "#ffffff"
-                    visible: index === root.selectedIndex
-                }
-
-                // Command and web modes use a small vector icon drawn here,
-                // rather than desktop-theme icons that may resolve to a missing-icon tile.
-                IconImage {
-                    id: resultIcon
-                    width: 30
-                    height: 30
-                    anchors.left: parent.left
-                    anchors.leftMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: resultRow.modelData.type === "app"
-                    source: Quickshell.iconPath(
-                        resultRow.modelData.icon || "application-x-executable",
-                        "application-x-executable"
-                    )
-                    asynchronous: true
-                }
-
-                Canvas {
-                    id: specialModeIcon
-                    width: 30
-                    height: 30
-                    anchors.left: resultIcon.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: resultRow.modelData.type !== "app"
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.clearRect(0, 0, width, height);
-                        ctx.strokeStyle = "#ffffff";
-                        ctx.fillStyle = "#ffffff";
-                        ctx.lineWidth = 1.7;
-                        ctx.lineCap = "round";
-                        ctx.lineJoin = "round";
-
-                        if (resultRow.modelData.type === "command") {
-                            // Terminal window, prompt chevron and cursor.
-                            ctx.strokeRect(3.5, 4.5, 23, 21);
-                            ctx.beginPath();
-                            ctx.moveTo(8, 10);
-                            ctx.lineTo(12, 13.5);
-                            ctx.lineTo(8, 17);
-                            ctx.moveTo(14.5, 17);
-                            ctx.lineTo(20, 17);
-                            ctx.stroke();
-                        } else if (resultRow.modelData.type === "calculator") {
-                            // Calculator outline, display and four clear key marks.
-                            ctx.strokeRect(6.5, 2.5, 17, 25);
-                            ctx.strokeRect(9.5, 5.5, 11, 5);
-                            ctx.beginPath();
-                            ctx.moveTo(10, 14);
-                            ctx.lineTo(12, 14);
-                            ctx.moveTo(17, 14);
-                            ctx.lineTo(19, 14);
-                            ctx.moveTo(10, 18);
-                            ctx.lineTo(12, 18);
-                            ctx.moveTo(17, 18);
-                            ctx.lineTo(19, 18);
-                            ctx.moveTo(10, 22);
-                            ctx.lineTo(12, 22);
-                            ctx.moveTo(17, 22);
-                            ctx.lineTo(19, 22);
-                            ctx.stroke();
-                        } else if (resultRow.modelData.type === "web") {
-                            // Magnifying glass for web and GitHub search.
-                            ctx.beginPath();
-                            ctx.arc(12, 12, 7, 0, Math.PI * 2);
-                            ctx.moveTo(17.2, 17.2);
-                            ctx.lineTo(23.5, 23.5);
-                            ctx.stroke();
-                        } else if (resultRow.modelData.type === "directory"
-                                || root.fileIconKind(resultRow.modelData) === "folder") {
-                            // Folder with a top tab.
-                            ctx.beginPath();
-                            ctx.moveTo(3.5, 8.5);
-                            ctx.lineTo(11, 8.5);
-                            ctx.lineTo(13.5, 11.5);
-                            ctx.lineTo(26.5, 11.5);
-                            ctx.lineTo(24.5, 25.5);
-                            ctx.lineTo(4.5, 25.5);
-                            ctx.closePath();
-                            ctx.moveTo(3.5, 8.5);
-                            ctx.lineTo(5, 23.5);
-                            ctx.stroke();
-                        } else {
-                            // Folded-corner document, customized by file type.
-                            const kind = root.fileIconKind(resultRow.modelData);
-                            ctx.beginPath();
-                            ctx.moveTo(7, 3);
-                            ctx.lineTo(18, 3);
-                            ctx.lineTo(24, 9);
-                            ctx.lineTo(24, 27);
-                            ctx.lineTo(7, 27);
-                            ctx.closePath();
-                            ctx.moveTo(18, 3);
-                            ctx.lineTo(18, 9);
-                            ctx.lineTo(24, 9);
-                            ctx.stroke();
-
-                            if (kind === "image") {
-                                ctx.strokeRect(10, 13, 11, 8);
-                                ctx.beginPath();
-                                ctx.arc(18, 15.5, 1.2, 0, Math.PI * 2);
-                                ctx.moveTo(11, 20);
-                                ctx.lineTo(14.5, 16.5);
-                                ctx.lineTo(17, 19);
-                                ctx.lineTo(19, 17.5);
-                                ctx.lineTo(21, 20);
-                                ctx.stroke();
-                            } else if (kind === "pdf") {
-                                ctx.font = "bold 6px sans-serif";
-                                ctx.fillText("PDF", 9, 19);
-                                ctx.beginPath();
-                                ctx.moveTo(10, 22);
-                                ctx.lineTo(21, 22);
-                                ctx.stroke();
-                            } else if (kind === "code") {
-                                ctx.beginPath();
-                                ctx.moveTo(13, 14);
-                                ctx.lineTo(10, 17);
-                                ctx.lineTo(13, 20);
-                                ctx.moveTo(18, 14);
-                                ctx.lineTo(21, 17);
-                                ctx.lineTo(18, 20);
-                                ctx.stroke();
-                            } else if (kind === "archive") {
-                                ctx.strokeRect(10, 13, 11, 9);
-                                ctx.beginPath();
-                                ctx.moveTo(15.5, 13);
-                                ctx.lineTo(15.5, 22);
-                                ctx.moveTo(14, 15);
-                                ctx.lineTo(17, 15);
-                                ctx.moveTo(14, 18);
-                                ctx.lineTo(17, 18);
-                                ctx.stroke();
-                            } else if (kind === "audio") {
-                                ctx.beginPath();
-                                ctx.moveTo(12, 20);
-                                ctx.lineTo(12, 14);
-                                ctx.lineTo(20, 12);
-                                ctx.lineTo(20, 19);
-                                ctx.stroke();
-                                ctx.beginPath();
-                                ctx.arc(10.5, 21, 2.5, 0, Math.PI * 2);
-                                ctx.arc(18.5, 19.5, 2.5, 0, Math.PI * 2);
-                                ctx.stroke();
-                            } else if (kind === "video") {
-                                ctx.strokeRect(10, 13, 11, 8);
-                                ctx.beginPath();
-                                ctx.moveTo(14, 15);
-                                ctx.lineTo(18, 17);
-                                ctx.lineTo(14, 19);
-                                ctx.closePath();
-                                ctx.stroke();
-                            } else if (kind === "spreadsheet") {
-                                ctx.strokeRect(10, 13, 11, 9);
-                                ctx.beginPath();
-                                ctx.moveTo(10, 16);
-                                ctx.lineTo(21, 16);
-                                ctx.moveTo(10, 19);
-                                ctx.lineTo(21, 19);
-                                ctx.moveTo(15.5, 13);
-                                ctx.lineTo(15.5, 22);
-                                ctx.stroke();
-                            } else if (kind === "presentation") {
-                                ctx.strokeRect(10, 13, 11, 7);
-                                ctx.beginPath();
-                                ctx.moveTo(15.5, 20);
-                                ctx.lineTo(15.5, 23);
-                                ctx.moveTo(12, 23);
-                                ctx.lineTo(19, 23);
-                                ctx.stroke();
-                            } else if (kind === "font") {
-                                ctx.font = "bold 10px sans-serif";
-                                ctx.fillText("Aa", 10, 20);
-                            } else if (kind === "executable") {
-                                ctx.beginPath();
-                                ctx.moveTo(12, 13);
-                                ctx.lineTo(12, 21);
-                                ctx.lineTo(19, 17);
-                                ctx.closePath();
-                                ctx.stroke();
-                            } else {
-                                // Generic document and text: content lines.
-                                ctx.beginPath();
-                                ctx.moveTo(10, 14);
-                                ctx.lineTo(21, 14);
-                                ctx.moveTo(10, 17.5);
-                                ctx.lineTo(21, 17.5);
-                                ctx.moveTo(10, 21);
-                                ctx.lineTo(19, 21);
-                                ctx.stroke();
-                            }
-                        }
-                    }
-                    onVisibleChanged: if (visible) requestPaint()
-                    Component.onCompleted: requestPaint()
-                }
+            Rectangle {
+                width: Math.min(parent.width - 36, 480)
+                height: 204
+                anchors.centerIn: parent
+                radius: Theme.radiusCard
+                color: Theme.surface
+                border.width: 1
+                border.color: Theme.tint(Theme.love, 0.5)
 
                 Column {
-                    anchors.left: resultIcon.right
-                    anchors.leftMargin: 12
-                    anchors.right: parent.right
-                    anchors.rightMargin: resultRow.modelData.type === "app" ? 46 : 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 3
-
-                    Text {
-                        width: parent.width
-                        text: resultRow.modelData.name || resultRow.modelData.id
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 14
-                        elide: Text.ElideRight
-                    }
-
-                    Text {
-                        width: parent.width
-                        text: resultRow.modelData.details || resultRow.modelData.genericName
-                            || resultRow.modelData.comment || String((resultRow.modelData.categories || [])[0] || "Application")
-                        color: root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 12
-                        elide: Text.ElideRight
-                    }
-                }
-
-                Text {
-                    id: resultFavoriteIcon
-                    z: 11
-                    anchors.right: parent.right
-                    anchors.rightMargin: 13
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: resultRow.modelData.type === "app"
-                    text: visible && root.favoriteIds.indexOf(resultRow.modelData.id) >= 0 ? "★" : "☆"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 18
-
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.margins: -5
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.toggleFavorite(resultRow.modelData)
-                    }
-                }
-
-                MouseArea {
-                    id: resultMouse
-                    z: 10
                     anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    preventStealing: true
-                    onEntered: root.selectedIndex = resultRow.index
-                    onClicked: function(mouse) {
-                        root.selectedIndex = resultRow.index;
-                        if (mouse.button === Qt.RightButton) {
-                            if (resultRow.modelData.type === "app")
-                                root.toggleFavorite(resultRow.modelData);
-                            else
-                                root.removeHistoryItem(resultRow.modelData);
-                        } else {
-                            root.launchResult(resultRow.modelData);
-                        }
+                    anchors.margins: 20
+                    spacing: 10
+
+                    UiText {
+                        width: parent.width
+                        text: "Confirm command"
+                        font.family: Theme.displayFont
+                        font.pixelSize: 20
+                        font.weight: Font.Bold
                     }
-                }
-            }
-        }
 
-        Loader {
-            id: wallpaperSelectorLoader
-            anchors.fill: parent
-            z: 30
-            active: root.wallpaperMode
-            visible: active
-            source: "WallpaperSelector.qml"
+                    UiText {
+                        width: parent.width
+                        text: "This command may modify system files, require privileges, or stop services. Continue only if you understand its effect."
+                        color: Theme.subtle
+                        font.pixelSize: 12
+                        font.weight: Font.Normal
+                        wrapMode: Text.Wrap
+                    }
 
-            onLoaded: {
-                if (item)
-                    item.filterText = root.wallpaperFilterText;
-            }
-        }
+                    UiText {
+                        width: parent.width
+                        text: root.pendingCommandText
+                        color: Theme.love
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
 
-        Connections {
-            target: wallpaperSelectorLoader.item
-            function onWallpaperApplied(path) {
-                root.closePanel();
-            }
-        }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
 
-        Column {
-            anchors.centerIn: parent
-            spacing: 8
-            visible: root.searchQuery.trim().length > 0
-                && !root.wallpaperMode
-                && root.searchResults.length === 0
-                && root.launchError.length === 0
-
-            Text {
-                width: mainContent.width - 40
-                text: "NO RESULTS FOUND"
-                color: root.foregroundColor
-                font.family: root.fontFamily
-                font.pixelSize: 14
-                font.bold: false
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            Text {
-                width: mainContent.width - 40
-                text: root.fileIndexReady ? "Try another search or use ? for web, > for commands." : "Applications are ready; file indexing is still running."
-                color: root.mutedColor
-                font.family: root.fontFamily
-                font.pixelSize: 11
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
-            }
-        }
-
-        Column {
-            anchors.centerIn: parent
-            spacing: 8
-            visible: root.searchQuery.trim().length === 0
-                && root.allApplications.length === 0
-                && root.launchError.length === 0
-
-            Text {
-                width: mainContent.width - 40
-                text: "NO APPLICATIONS FOUND"
-                color: root.foregroundColor
-                font.family: root.fontFamily
-                font.pixelSize: 14
-                font.bold: false
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            Text {
-                width: mainContent.width - 40
-                text: "Installed desktop entries will appear here."
-                color: root.mutedColor
-                font.family: root.fontFamily
-                font.pixelSize: 11
-                horizontalAlignment: Text.AlignHCenter
-            }
-        }
-
-        Text {
-            anchors.centerIn: parent
-            visible: root.launchError.length > 0
-            text: root.launchError
-            color: root.mutedColor
-            font.family: root.fontFamily
-            font.pixelSize: 14
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            width: Math.min(parent.width - 40, 420)
-        }
-    }
-
-    Item {
-        id: commandConfirmationOverlay
-        anchors.fill: parent
-        visible: root.visible && root.commandConfirmationRequired
-        z: 1000
-
-        Rectangle {
-            anchors.fill: parent
-            color: "#c0000000"
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                onClicked: {}
-            }
-        }
-
-        Rectangle {
-            width: Math.min(parent.width - 36, 480)
-            height: 190
-            anchors.centerIn: parent
-            color: "#050505"
-            border.width: 1
-            border.color: "#ffffff"
-
-            Column {
-                anchors.fill: parent
-                anchors.margins: 20
-                spacing: 12
-
-                Text {
-                    width: parent.width
-                    text: "CONFIRM COMMAND"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 15
-                    font.bold: false
-                }
-
-                Text {
-                    width: parent.width
-                    text: "This command may modify system files, require privileges, or stop services. Continue only if you understand its effect."
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 12
-                    wrapMode: Text.Wrap
-                }
-
-                Text {
-                    width: parent.width
-                    text: root.pendingCommandText
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 12
-                    elide: Text.ElideRight
-                }
-
-                Row {
-                    anchors.right: parent.right
-                    spacing: 8
-
-                    Rectangle {
-                        width: 108
-                        height: 30
-                        color: cancelMouse.containsMouse ? "#202020" : "#0b0b0b"
-                        border.width: 1
-                        border.color: "#555555"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "CANCEL"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                        }
-                        MouseArea {
-                            id: cancelMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                        SoftButton {
+                            implicitHeight: 36
+                            label: "Cancel"
                             onClicked: {
                                 root.commandConfirmationRequired = false;
                                 searchInput.forceActiveFocus();
                             }
                         }
-                    }
 
-                    Rectangle {
-                        width: 126
-                        height: 30
-                        color: confirmMouse.containsMouse ? "#292929" : "#151515"
-                        border.width: 1
-                        border.color: "#aaaaaa"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "RUN IN KITTY"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                        }
-                        MouseArea {
-                            id: confirmMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                        SoftButton {
+                            implicitHeight: 36
+                            label: "Run in Kitty"
+                            variant: "accent"
+                            accent: Theme.love
                             onClicked: root.executePendingCommand()
                         }
                     }

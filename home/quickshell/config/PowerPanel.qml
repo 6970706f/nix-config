@@ -8,12 +8,6 @@ PopupWindow {
     property var anchorWindow: null
     property var anchorItem: null
 
-    readonly property color panelColor: "#000000"
-    readonly property color foregroundColor: "#ffffff"
-    readonly property color mutedColor: "#b8b8b8"
-    readonly property color borderColor: "#ffffff"
-    readonly property color separatorColor: "#303030"
-    readonly property string fontFamily: "JetBrainsMono Nerd Font ExtraLight"
 
     property bool confirmationVisible: false
     property string pendingAction: ""
@@ -21,35 +15,36 @@ PopupWindow {
     property string errorMessage: ""
 
     readonly property var actions: [
-        { action: "lock", label: "LOCK SCREEN", icon: "󰌾" },
-        { action: "suspend", label: "SUSPEND", icon: "󰤄" },
-        { action: "hibernate", label: "HIBERNATE", icon: "󰒲" },
-        { action: "logout", label: "LOG OUT", icon: "󰍃" },
-        { action: "reboot", label: "REBOOT", icon: "󰜉" },
-        { action: "shutdown", label: "SHUT DOWN", icon: "󰐥" }
+        { action: "lock", label: "Lock", icon: "󰌾" },
+        { action: "suspend", label: "Suspend", icon: "󰤄" },
+        { action: "hibernate", label: "Hibernate", icon: "󰒲" },
+        { action: "logout", label: "Log out", icon: "󰍃" },
+        { action: "reboot", label: "Reboot", icon: "󰜉" },
+        { action: "shutdown", label: "Shut down", icon: "󰐥" }
     ]
 
-    width: 260
-    height: confirmationVisible
-        ? (errorMessage.length > 0 ? 232 : 205)
-        : 282
+    width: 312 + Theme.popupPadX * 2
+    height: (confirmationVisible
+        ? (errorMessage.length > 0 ? 232 : 206)
+        : 266) + Theme.popupPadY
     color: "transparent"
     visible: false
 
     // Native popup grab: dismiss automatically on outside click and release focus on close.
     anchor.window: root.anchorWindow
     anchor.rect.x: root.panelLeft
-    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 8 : 34
+    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height : 34
     grabFocus: true
 
     readonly property int panelLeft: {
         if (!root.anchorItem || !root.anchorWindow)
-            return 8;
+            return 0;
 
+        // Re-read the anchor on open: bar tabs shift as their content changes.
+        root.visible;
         const point = root.anchorItem.mapToItem(root.anchorWindow.contentItem, 0, 0);
-        const minimumX = root.anchorWindow.width >= root.width + 16 ? 8 : 0;
-        const maximumX = Math.max(minimumX, root.anchorWindow.width - root.width - minimumX);
-        return Math.max(minimumX, Math.min(
+        const maximumX = Math.max(0, root.anchorWindow.width - root.width);
+        return Math.max(0, Math.min(
             point.x + root.anchorItem.width / 2 - root.width / 2,
             maximumX
         ));
@@ -57,13 +52,13 @@ PopupWindow {
 
     function actionName(action) {
         switch (action) {
-        case "lock": return "LOCK SCREEN";
-        case "suspend": return "SUSPEND";
-        case "hibernate": return "HIBERNATE";
-        case "logout": return "LOG OUT";
-        case "reboot": return "REBOOT";
-        case "shutdown": return "SHUT DOWN";
-        default: return "THIS ACTION";
+        case "lock": return "Lock screen";
+        case "suspend": return "Suspend";
+        case "hibernate": return "Hibernate";
+        case "logout": return "Log out";
+        case "reboot": return "Reboot";
+        case "shutdown": return "Shut down";
+        default: return "This action";
         }
     }
 
@@ -179,57 +174,48 @@ PopupWindow {
         onActivated: root.closePanel()
     }
 
-    Rectangle {
+    function accentFor(action) {
+        switch (action) {
+        case "lock": return Theme.iris;
+        case "suspend": return Theme.foam;
+        case "hibernate": return Theme.mint;
+        case "logout": return Theme.gold;
+        case "reboot": return Theme.rose;
+        default: return Theme.love;
+        }
+    }
+
+    function glyphFor(action) {
+        for (let i = 0; i < root.actions.length; i++) {
+            if (root.actions[i].action === action)
+                return root.actions[i].icon;
+        }
+        return Theme.icons.power;
+    }
+
+    PanelSurface {
         id: outerBorder
-        focus: root.visible
-        anchors.fill: parent
-        color: root.panelColor
-        radius: 0
-        border.width: 1
-        border.color: root.borderColor
+        window: root
+        accent: root.confirmationVisible ? root.accentFor(root.pendingAction) : Theme.love
 
         Column {
             id: contentColumn
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 7
+            spacing: 14
 
-            Item {
-                width: parent.width
-                height: 26
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.confirmationVisible ? "CONFIRM ACTION" : "POWER OPTIONS"
-                    color: root.foregroundColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 13
-                    font.bold: false
-                }
-
-                Text {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.actionBusy ? "WORKING" : "SYSTEM"
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
-                    horizontalAlignment: Text.AlignRight
-                }
+            PanelHeader {
+                glyph: root.confirmationVisible ? root.glyphFor(root.pendingAction) : Theme.icons.power
+                accent: root.confirmationVisible ? root.accentFor(root.pendingAction) : Theme.love
+                title: root.confirmationVisible ? "Confirm action" : "Power"
+                subtitle: root.actionBusy ? "Working…" : (root.confirmationVisible ? "" : "Select an action to continue")
             }
 
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: root.separatorColor
-            }
-
-            Column {
+            Grid {
                 id: optionsColumn
                 visible: !root.confirmationVisible
                 width: parent.width
-                spacing: 4
+                columns: 3
+                spacing: 8
 
                 Repeater {
                     model: root.actions
@@ -237,46 +223,39 @@ PopupWindow {
                     delegate: Rectangle {
                         id: optionRow
                         required property var modelData
-                        width: optionsColumn.width
-                        height: 28
-                        color: optionMouse.containsMouse ? "#1c1c1c" : "#080808"
-                        border.width: 1
-                        border.color: "#303030"
+                        readonly property color tileAccent: root.accentFor(modelData.action)
 
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: optionRow.modelData.icon
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
+                        width: (optionsColumn.width - optionsColumn.spacing * 2) / 3
+                        height: 86
+                        radius: Theme.radiusTile
+                        color: optionMouse.containsMouse ? Theme.tint(tileAccent, 0.22) : Theme.surface
+                        scale: optionMouse.pressed ? 0.95 : 1
+
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.fast }
                         }
 
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 34
-                            anchors.right: arrowLabel.left
-                            anchors.rightMargin: 6
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: optionRow.modelData.label
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            font.bold: false
-                            elide: Text.ElideRight
+                        Behavior on scale {
+                            NumberAnimation { duration: Theme.fast; easing.type: Easing.OutCubic }
                         }
 
-                        Text {
-                            id: arrowLabel
-                            anchors.right: parent.right
-                            anchors.rightMargin: 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "󰅂"
-                            color: root.mutedColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 12
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 7
+
+                            Icon {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: optionRow.modelData.icon
+                                color: optionRow.tileAccent
+                                font.pixelSize: 24
+                            }
+
+                            UiText {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: optionRow.modelData.label
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                            }
                         }
 
                         MouseArea {
@@ -295,43 +274,37 @@ PopupWindow {
             Column {
                 visible: root.confirmationVisible
                 width: parent.width
-                spacing: 8
+                spacing: 12
 
-                Item {
+                Column {
                     width: parent.width
-                    height: 54
+                    spacing: 4
 
-                    Text {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
+                    UiText {
+                        width: parent.width
                         text: root.actionName(root.pendingAction) + "?"
-                        color: root.foregroundColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.bold: false
+                        font.family: Theme.displayFont
+                        font.pixelSize: 22
+                        font.weight: Font.Bold
                         wrapMode: Text.WordWrap
                     }
 
-                    Text {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
+                    UiText {
+                        width: parent.width
                         text: root.actionDescription(root.pendingAction)
-                        color: root.mutedColor
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
+                        color: Theme.subtle
+                        font.pixelSize: 12
+                        font.weight: Font.Normal
                         wrapMode: Text.WordWrap
                     }
                 }
 
-                Text {
+                UiText {
                     width: parent.width
                     visible: root.errorMessage.length > 0
                     text: root.errorMessage
-                    color: "#ff7777"
-                    font.family: root.fontFamily
-                    font.pixelSize: 10
+                    color: Theme.love
+                    font.pixelSize: 11
                     wrapMode: Text.WordWrap
                     maximumLineCount: 2
                     elide: Text.ElideRight
@@ -339,73 +312,26 @@ PopupWindow {
 
                 Row {
                     width: parent.width
-                    height: 30
-                    spacing: 7
+                    spacing: 8
 
-                    Rectangle {
+                    SoftButton {
                         width: (parent.width - parent.spacing) / 2
-                        height: parent.height
-                        color: cancelMouse.containsMouse ? "#1c1c1c" : "#080808"
-                        border.width: 1
-                        border.color: "#373737"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "CANCEL"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            font.bold: false
-                        }
-
-                        MouseArea {
-                            id: cancelMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            acceptedButtons: Qt.LeftButton
-                            enabled: !root.actionBusy
-                            onClicked: root.cancelConfirmation()
-                        }
+                        implicitHeight: 38
+                        label: "Cancel"
+                        enabled: !root.actionBusy
+                        onClicked: root.cancelConfirmation()
                     }
 
-                    Rectangle {
+                    SoftButton {
                         width: (parent.width - parent.spacing) / 2
-                        height: parent.height
-                        color: confirmMouse.containsMouse ? "#242424" : "#111111"
-                        border.width: 1
-                        border.color: "#ffffff"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.actionBusy ? "RUNNING..." : "CONFIRM"
-                            color: root.foregroundColor
-                            font.family: root.fontFamily
-                            font.pixelSize: 11
-                            font.bold: false
-                        }
-
-                        MouseArea {
-                            id: confirmMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            acceptedButtons: Qt.LeftButton
-                            enabled: !root.actionBusy
-                            onClicked: root.executePendingAction()
-                        }
+                        implicitHeight: 38
+                        label: root.actionBusy ? "Running…" : "Confirm"
+                        variant: "accent"
+                        accent: root.accentFor(root.pendingAction)
+                        enabled: !root.actionBusy
+                        onClicked: root.executePendingAction()
                     }
                 }
-            }
-
-            Text {
-                visible: !root.confirmationVisible
-                width: parent.width
-                text: "SELECT AN ACTION TO CONTINUE"
-                color: root.mutedColor
-                font.family: root.fontFamily
-                font.pixelSize: 9
-                horizontalAlignment: Text.AlignHCenter
             }
         }
     }
