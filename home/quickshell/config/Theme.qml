@@ -102,7 +102,13 @@ Singleton {
         rain: cp(0xF0597),
         snow: cp(0xF0598),
         storm: cp(0xF0593),
-        apps: cp(0xF003B)
+        apps: cp(0xF003B),
+        bell: cp(0xF009A),
+        bellOutline: cp(0xF009C),
+        bellOff: cp(0xF009B),
+        close: cp(0xF0156),
+        chevronDown: cp(0xF0140),
+        chevronUp: cp(0xF0143)
     })
 
     function cp(code) {

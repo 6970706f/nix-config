@@ -183,6 +183,8 @@ Scope {
         precision: SystemClock.Minutes
     }
 
+    NotificationPopups {}
+
     Variants {
         model: Quickshell.screens
 
@@ -452,6 +454,8 @@ Scope {
                         powerPanel.closePanel();
                     if (appLauncher.visible)
                         appLauncher.closePanel();
+                    if (notificationCenter.visible)
+                        notificationCenter.closePanel();
                 }
             }
 
@@ -726,6 +730,12 @@ Scope {
                         }
                     }
                 }
+
+                NotificationIndicator {
+                    id: notificationModule
+                    anchors.verticalCenter: parent.verticalCenter
+                    onClicked: notificationCenter.togglePanel()
+                }
             }
 
             BarTab {
@@ -829,6 +839,27 @@ Scope {
                 id: systemMonitorPanel
                 anchorWindow: barWindow
                 anchorItem: cpuModule
+
+                onVisibleChanged: {
+                    if (visible)
+                        musicPlayerModule.closePanel();
+                }
+            }
+
+            NotificationCenter {
+                id: notificationCenter
+                anchorWindow: barWindow
+                anchorItem: notificationModule
+                siblingPanels: [
+                    networkPanel,
+                    soundPanel,
+                    calendarPanel,
+                    powerPanel,
+                    batteryPanel,
+                    bluetoothPanel,
+                    systemMonitorPanel,
+                    appLauncher
+                ]
 
                 onVisibleChanged: {
                     if (visible)
