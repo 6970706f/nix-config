@@ -131,7 +131,6 @@ hl.bind("ALT + Tab", hl.dsp.window.cycle_next())
 
 -- ── Sistema ───────────────────────────────────────
 bindSuper(vars.mainMod .. " + L", hl.dsp.exec_cmd(vars.lock))
-bindSuper(vars.mainMod .. " + M", hl.dsp.exec_cmd(vars.wallpaper))
 hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(vars.btop))
 bindSuper(vars.mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(vars.print))
 bindSuper(vars.mainMod .. " + SHIFT + D", hl.dsp.exec_cmd(vars.record))

@@ -37,7 +37,6 @@ local variables = {
 
     -- ── Sistema ───────────────────────────────────────
     lock = "hyprlock",
-    wallpaper = "~/.config/hypr/scripts/nextwallpaper.sh",
     btop = terminal .. " -e btop",
     print = "~/.config/hypr/scripts/print.sh",
     record = "~/.config/hypr/scripts/record.sh",
