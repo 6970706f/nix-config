@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# Makes GTK follow the wallpaper, on or off like the shell's "Wallpaper colors" switch.
+#
+# "on" links a recolored copy of the theme under the same name in the user's themes folder,
+# which GTK searches before the system one. "off" removes that link, so the untouched
+# original comes back on its own and no setting ever has to change.
+#
+# GTK_COLORS_TARGET_HOME overrides the home folder the links are placed in.
+set -euo pipefail
+
+matugen_dir=$(cd "$(dirname "$0")" && pwd)
+target=${GTK_COLORS_TARGET_HOME:-$HOME}
+mkdir -p "$target"
+target=$(cd "$target" && pwd)
+
+theme_name=Flat-Remix-GTK-White-Darkest
+state=$target/.local/state/gtk-wallpaper-colors
+theme=$state/theme/$theme_name
+theme_link=$target/.local/share/themes/$theme_name
+adwaita_link=$target/.config/gtk-4.0/gtk.css
+
+current_wallpaper() {
+    awww query | sed -n 's/.*currently displaying: image: //p' | head -n 1
+}
+
+# Grayscale images have no source color, so they get the monochrome scheme, as in Theme.qml.
+generate() {
+    local image=$1 config=$state/matugen.toml neutral="#808080" sources scheme=scheme-tonal-spot
+
+    mkdir -p "$theme/gtk-3.0" "$theme/gtk-4.0"
+    cat > "$config" <<TOML
+[config]
+
+[templates.gtk3]
+input_path = "$matugen_dir/templates/gtk/gtk-3.0.css"
+output_path = "$theme/gtk-3.0/gtk.css"
+
+[templates.gtk4]
+input_path = "$matugen_dir/templates/gtk/gtk-4.0.css"
+output_path = "$theme/gtk-4.0/gtk.css"
+
+[templates.libadwaita]
+input_path = "$matugen_dir/templates/gtk/libadwaita.css"
+output_path = "$state/libadwaita.css"
+TOML
+
+    sources=$(matugen image "$image" -c "$config" --show-source-colors --fallback-color "$neutral")
+    [ "$sources" = "$neutral" ] && scheme=scheme-monochrome
+    matugen image "$image" -c "$config" -q --mode dark --type "$scheme" \
+        --source-color-index 0 --fallback-color "$neutral"
+
+    install -m 644 "$matugen_dir/gtk/base/index.theme" "$theme/index.theme"
+    for version in 3.0 4.0; do
+        ln -sfn gtk.css "$theme/gtk-$version/gtk-dark.css"
+        ln -sfn "$matugen_dir/gtk/base/gtk-$version/assets" "$theme/gtk-$version/assets"
+    done
+    printf '%s\n' "$image" > "$state/wallpaper"
+}
+
+# Only ever replaces or removes links this script made, never a real file of the user's.
+place_link() {
+    local source=$1 link=$2
+    if [ -e "$link" ] || [ -L "$link" ]; then
+        case "$(readlink "$link" || true)" in
+            "$state"/*) ;;
+            *) echo "gtk-wallpaper-colors: $link already exists, leaving it alone" >&2; return 1 ;;
+        esac
+    fi
+    mkdir -p "$(dirname "$link")"
+    ln -sfn "$source" "$link"
+}
+
+remove_link() {
+    case "$(readlink "$1" || true)" in
+        "$state"/*) rm "$1" ;;
+    esac
+}
+
+# Open GTK apps reload their theme when its name changes, so flip it away and back. Skipped
+# in the sandbox: dconf is the user's real setting.
+reload_apps() {
+    [ "$target" = "$HOME" ] || return 0
+    local key=/org/gnome/desktop/interface/gtk-theme current
+    current=$(dconf read "$key")
+    dconf write "$key" "'Adwaita'"
+    sleep 0.2
+    dconf write "$key" "$current"
+}
+
+is_on() {
+    [ -e "$state/enabled" ]
+}
+
+turn_on() {
+    local image
+    image=$(current_wallpaper)
+    [ -n "$image" ] || { echo "gtk-wallpaper-colors: awww reports no wallpaper" >&2; return 1; }
+    generate "$image"
+    place_link "$theme" "$theme_link" && place_link "$state/libadwaita.css" "$adwaita_link" || { remove_link "$theme_link"; return 1; }
+    touch "$state/enabled"
+    reload_apps
+}
+
+turn_off() {
+    remove_link "$theme_link"
+    remove_link "$adwaita_link"
+    rm -f "$state/enabled"
+    reload_apps
+}
+
+sync_wallpaper() {
+    is_on || return 0
+    local image=${1:-$(current_wallpaper)}
+    [ -n "$image" ] || return 0
+    [ "$image" != "$(cat "$state/wallpaper" 2>/dev/null)" ] || return 0
+    generate "$image"
+    reload_apps
+}
+
+mkdir -p "$state"
+exec 9> "$state/lock"
+flock 9
+
+case "${1:-status}" in
+    on) turn_on ;;
+    off) turn_off ;;
+    toggle) if is_on; then turn_off; else turn_on; fi ;;
+    sync) sync_wallpaper "${2:-}" ;;
+    status) if is_on; then echo "on: $(cat "$state/wallpaper")"; else echo off; fi ;;
+    *) echo "usage: gtk-wallpaper-colors [on|off|toggle|sync [image]|status]" >&2; exit 2 ;;
+esac

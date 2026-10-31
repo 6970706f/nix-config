@@ -393,7 +393,7 @@ Scope {
                             width: 5
                             height: 5
                             radius: 2.5
-                            color: Theme.love
+                            color: Theme.iris
                         }
 
                         UiText {

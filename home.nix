@@ -7,6 +7,7 @@
     ./home/packages.nix
     ./home/kitty
     ./home/quickshell
+    ./home/matugen
   ];
 
   home.username = "user";

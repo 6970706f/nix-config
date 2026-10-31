@@ -219,6 +219,7 @@ Item {
             root.isApplying = false;
             if (exitCode === 0) {
                 root.statusMessage = "Wallpaper applied";
+                Theme.syncWallpaper();
                 root.wallpaperApplied(root.pendingPath);
             } else {
                 const details = String(applyErrors.text || applyOutput.text || "").trim();
@@ -247,12 +248,12 @@ Item {
                     width: 32
                     height: 32
                     radius: 11
-                    color: Theme.tint(Theme.gold, 0.18)
+                    color: Theme.tint(Theme.iris, 0.18)
 
                     Icon {
                         anchors.centerIn: parent
                         text: Theme.icons.image
-                        color: Theme.gold
+                        color: Theme.iris
                     }
                 }
 
@@ -282,6 +283,26 @@ Item {
                 fontSize: 11
                 enabled: !root.isLoading
                 onClicked: root.refreshWallpapers()
+            }
+
+            Row {
+                anchors.right: refreshButton.left
+                anchors.rightMargin: 14
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 8
+
+                UiText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Wallpaper colors"
+                    color: Theme.subtle
+                    font.pixelSize: 11
+                }
+
+                SoftSwitch {
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: Theme.wallpaperColors
+                    onClicked: Theme.setWallpaperColors(!Theme.wallpaperColors)
+                }
             }
         }
 
@@ -494,7 +515,7 @@ Item {
                     implicitHeight: 40
                     label: root.isApplying ? "Applying…" : "Apply wallpaper"
                     variant: "accent"
-                    accent: Theme.gold
+                    accent: Theme.iris
                     enabled: Boolean(root.selectedWallpaper) && !root.isApplying
                     onClicked: root.applySelected()
                 }

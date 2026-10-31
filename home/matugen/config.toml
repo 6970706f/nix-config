@@ -1,0 +1,12 @@
+# Theme.qml runs matugen with this file whenever the wallpaper changes. Relative template
+# paths resolve from this folder. The output lives outside ~/.config because Home Manager
+# keeps that tree read-only.
+
+# Fixed meanings (warning and success), pulled toward the wallpaper's hue.
+[config.custom_colors]
+gold = "#e6b450"
+mint = "#7fd8a4"
+
+[templates.quickshell]
+input_path = "templates/quickshell-colors.json"
+output_path = "~/.local/state/quickshell/wallpaper-colors.json"

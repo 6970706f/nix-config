@@ -246,7 +246,7 @@ PopupWindow {
     PanelSurface {
         id: outerBorder
         window: root
-        accent: Theme.love
+        accent: Theme.rose
 
         Column {
             id: contentColumn
@@ -415,7 +415,7 @@ PopupWindow {
                             radius: 13
                             color: dayMouse.containsMouse ? Theme.raised : "transparent"
                             border.width: dayCell.isToday && !dayCell.isSelected ? 1.5 : 0
-                            border.color: Theme.love
+                            border.color: Theme.rose
 
                             Behavior on color {
                                 ColorAnimation { duration: Theme.fast }
@@ -532,8 +532,8 @@ PopupWindow {
                             };
 
                             const area = ctx.createLinearGradient(0, top, 0, bottom);
-                            area.addColorStop(0, Theme.tint(Theme.love, 0.38).toString());
-                            area.addColorStop(1, Theme.tint(Theme.love, 0).toString());
+                            area.addColorStop(0, Theme.tint(Theme.rose, 0.38).toString());
+                            area.addColorStop(1, Theme.tint(Theme.rose, 0).toString());
                             ctx.beginPath();
                             trace();
                             ctx.lineTo(right, bottom);
@@ -543,8 +543,8 @@ PopupWindow {
                             ctx.fill();
 
                             const line = ctx.createLinearGradient(left, 0, right, 0);
-                            line.addColorStop(0, Theme.gold.toString());
-                            line.addColorStop(0.5, Theme.love.toString());
+                            line.addColorStop(0, Theme.foam.toString());
+                            line.addColorStop(0.5, Theme.rose.toString());
                             line.addColorStop(1, Theme.iris.toString());
                             ctx.beginPath();
                             trace();

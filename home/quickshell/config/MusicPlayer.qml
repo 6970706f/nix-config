@@ -214,7 +214,7 @@ Item {
                     anchors.centerIn: parent
                     visible: barCoverImage.status !== Image.Ready
                     text: Theme.icons.musicNote
-                    color: Theme.love
+                    color: Theme.iris
                     font.pixelSize: 14
                 }
             }
@@ -318,7 +318,7 @@ Item {
         PanelSurface {
             id: playerSurface
             window: playerPanel
-            accent: Theme.love
+            accent: Theme.iris
             padding: 0
 
             // The cover, blurred and darkened, tints the whole card.
@@ -414,7 +414,7 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     implicitHeight: 36
                     variant: "accent"
-                    accent: Theme.love
+                    accent: Theme.iris
                     glyph: Theme.icons.music
                     label: "Open Spotifast"
                     onClicked: root.openApp()
@@ -450,7 +450,7 @@ Item {
                                 radius: width / 2
                                 color: "transparent"
                                 border.width: 1.5
-                                border.color: Theme.love
+                                border.color: Theme.iris
                                 opacity: 0
                                 visible: root.isPlaying
 
@@ -504,7 +504,7 @@ Item {
                                 Icon {
                                     anchors.centerIn: parent
                                     text: Theme.icons.musicNote
-                                    color: Theme.love
+                                    color: Theme.iris
                                     font.pixelSize: 36
                                     visible: artworkImage.status !== Image.Ready
                                 }
@@ -523,7 +523,7 @@ Item {
                             UiText {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: root.isPlaying ? "Now playing" : "Paused"
-                                color: Theme.love
+                                color: Theme.iris
                                 font.pixelSize: 11
                                 font.weight: Font.Bold
                             }
@@ -551,7 +551,7 @@ Item {
                                         width: 3
                                         radius: 1.5
                                         height: root.isPlaying ? heightLevel : 3
-                                        color: Theme.love
+                                        color: Theme.iris
 
                                         SequentialAnimation {
                                             running: root.isPlaying && playerPanel.visible
@@ -656,7 +656,7 @@ Item {
                     Icon {
                         anchors.verticalCenter: parent.verticalCenter
                         text: Theme.icons.volumeHigh
-                        color: Theme.love
+                        color: Theme.iris
                     }
 
                     SoftSlider {
@@ -666,7 +666,7 @@ Item {
                         from: 0
                         to: 100
                         stepSize: 1
-                        accent: Theme.love
+                        accent: Theme.iris
                         value: root.volumePercent
                         onMoved: root.volumePercent = Math.round(value)
                         onPressedChanged: {

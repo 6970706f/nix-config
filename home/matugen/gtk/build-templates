@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Turns the Flat-Remix CSS in gtk/base into matugen templates. Only needed again if the base
+# theme or colors.sed changes; prints any neutral color the mapping missed.
+set -euo pipefail
+gtk=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+out=$gtk/../templates/gtk
+mkdir -p "$out"
+for version in 3.0 4.0; do
+    sed -E -f "$gtk/colors.sed" "$gtk/base/gtk-$version/gtk.css" > "$out/gtk-$version.css"
+    echo "gtk-$version unmapped grays:"
+    grep -oiE '#([0-9a-f]{2})\1\1\b|#[0-9a-f]{6}\b' "$out/gtk-$version.css" \
+        | grep -iE '#(([0-9a-f]{2})\2\2)$' | sort | uniq -c || true
+done
