@@ -17,6 +17,9 @@ Singleton {
     property bool settingsLoaded: false
     property var wallpaperPalette: ({})
     property string wallpaper: ""
+    readonly property bool switchingColors: gtkSwitch.running
+    readonly property string gtkColorsCommand: String(Quickshell.env("HOME") || "")
+        + "/.config/matugen/gtk-wallpaper-colors"
 
     readonly property var palette: settingsLoaded && wallpaperColors ? wallpaperPalette : ({})
 
@@ -153,9 +156,17 @@ Singleton {
         }
     }
 
+    function saveSettings() {
+        settingsFile.setText(JSON.stringify({ wallpaperColors: wallpaperColors }));
+    }
+
+    // Shell and GTK switch together: the shell only follows once GTK has, so a failure
+    // leaves both off.
     function setWallpaperColors(enabled) {
-        wallpaperColors = enabled;
-        settingsFile.setText(JSON.stringify({ wallpaperColors: enabled }));
+        if (gtkSwitch.running)
+            return;
+        gtkSwitch.enabling = enabled;
+        gtkSwitch.running = true;
     }
 
     function restoreSettings() {
@@ -168,6 +179,7 @@ Singleton {
             console.warn("Theme: could not read settings:", error);
         }
         settingsLoaded = true;
+        gtkStatus.running = true;
     }
 
     FileView {
@@ -201,16 +213,50 @@ Singleton {
     }
 
     Process {
+        id: gtkSwitch
+        property bool enabling: false
+        command: ["bash", theme.gtkColorsCommand, enabling ? "on" : "off"]
+
+        stderr: StdioCollector {
+            id: gtkSwitchErrors
+        }
+
+        onExited: function(exitCode, exitStatus) {
+            if (exitCode !== 0) {
+                console.warn("Theme: GTK colors failed:", gtkSwitchErrors.text.trim());
+                if (enabling)
+                    Quickshell.execDetached(["bash", theme.gtkColorsCommand, "off"]);
+            }
+            theme.wallpaperColors = enabling && exitCode === 0;
+            theme.saveSettings();
+        }
+    }
+
+    // GTK keeps its state on disk, so it can disagree with the saved setting at startup.
+    Process {
+        id: gtkStatus
+        command: ["bash", theme.gtkColorsCommand, "status"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (this.text.startsWith("on") !== theme.wallpaperColors)
+                    theme.setWallpaperColors(theme.wallpaperColors);
+            }
+        }
+    }
+
+    Process {
         id: wallpaperQuery
         command: ["awww", "query"]
 
         stdout: StdioCollector {
             onStreamFinished: {
                 const match = this.text.match(/currently displaying: image: (.+)$/m);
-                if (!match || match[1] === theme.wallpaper)
+                if (!match || !theme.wallpaperColors || match[1] === theme.wallpaper)
                     return;
                 theme.wallpaper = match[1];
                 colorGenerator.running = true;
+                Quickshell.execDetached(["bash", theme.gtkColorsCommand, "sync", match[1]]);
             }
         }
     }

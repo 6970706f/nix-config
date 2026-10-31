@@ -77,12 +77,13 @@ remove_link() {
 }
 
 # Open GTK apps reload their theme when its name changes, so flip it away and back. Skipped
-# in the sandbox: dconf is the user's real setting.
+# in the sandbox: dconf is the user's real setting. The flip goes through a dark theme because
+# Firefox and LibreWolf can stay stuck on Adwaita's colors after flipping through Adwaita.
 reload_apps() {
     [ "$target" = "$HOME" ] || return 0
     local key=/org/gnome/desktop/interface/gtk-theme current
     current=$(dconf read "$key")
-    dconf write "$key" "'Adwaita'"
+    dconf write "$key" "'Flat-Remix-GTK-White-Dark'"
     sleep 0.2
     dconf write "$key" "$current"
 }

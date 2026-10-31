@@ -293,7 +293,7 @@ Item {
 
                 UiText {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Wallpaper colors"
+                    text: "Wallpaper + GTK colors"
                     color: Theme.subtle
                     font.pixelSize: 11
                 }
@@ -301,6 +301,7 @@ Item {
                 SoftSwitch {
                     anchors.verticalCenter: parent.verticalCenter
                     checked: Theme.wallpaperColors
+                    enabled: !Theme.switchingColors
                     onClicked: Theme.setWallpaperColors(!Theme.wallpaperColors)
                 }
             }
