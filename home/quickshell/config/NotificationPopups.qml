@@ -3,7 +3,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import QtQuick
 
-// Pop-ups stack in the top right corner of the focused screen, under the bar.
+// Pop-ups stack in the bottom right corner of the focused screen.
 Scope {
     id: root
 
@@ -62,7 +62,7 @@ Scope {
             Item {
                 id: inputArea
                 x: Theme.popupPadX
-                y: Theme.popupPadTop
+                y: popupWindow.height - Theme.popupPadBottom - height
                 width: root.cardWidth
                 height: Math.max(0, popupList.contentHeight - Theme.popupPadY)
             }
@@ -71,6 +71,7 @@ Scope {
                 id: popupList
                 anchors.fill: parent
                 interactive: false
+                verticalLayoutDirection: ListView.BottomToTop
                 spacing: root.cardSpacing
                 model: ScriptModel {
                     objectProp: "key"

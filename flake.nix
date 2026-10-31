@@ -5,6 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     spotifast.url = "github:crmne/spotifast/v0.14.2";
+    nixblend.url = "github:6970706f/nix_blend";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";

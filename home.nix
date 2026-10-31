@@ -6,7 +6,6 @@
     ./home/zsh
     ./home/packages.nix
     ./home/kitty
-    ./home/dunst
     ./home/quickshell
   ];
 

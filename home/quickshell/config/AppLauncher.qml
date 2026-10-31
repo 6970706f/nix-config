@@ -17,6 +17,12 @@ PopupWindow {
 
     property string searchQuery: ""
     property int selectedIndex: 0
+    readonly property var selectedDirectory: {
+        if (root.searchQuery.trim().length === 0 || root.wallpaperMode)
+            return null;
+        const item = root.searchResults[root.selectedIndex];
+        return item && item.type === "directory" ? item : null;
+    }
     property string launchError: ""
     property var categoryFilter: []
     property bool applyingQuickSearch: false
@@ -1021,15 +1027,29 @@ PopupWindow {
         root.closePanel();
     }
 
+    // Enter opens a folder in the editor, Shift+Enter in the file manager.
+    function openDirectory(item, command) {
+        try {
+            Quickshell.execDetached({ command: [command, String(item.path)] });
+            root.recordHistory("directory", item);
+            root.closePanel();
+        } catch (error) {
+            console.error("AppLauncher: unable to open folder:", error);
+            root.launchError = "Unable to open this folder with " + command + ".";
+        }
+    }
+
     function launchResult(item) {
         if (!item)
             return;
         if (item.type === "app") {
             root.launchApplication(item.entry);
-        } else if (item.type === "file" || item.type === "directory") {
+        } else if (item.type === "directory") {
+            root.openDirectory(item, "code");
+        } else if (item.type === "file") {
             try {
                 Quickshell.execDetached({ command: ["xdg-open", String(item.path)] });
-                root.recordHistory(item.type === "directory" ? "directory" : "file", item);
+                root.recordHistory("file", item);
                 root.closePanel();
             } catch (error) {
                 console.error("AppLauncher: unable to open file:", error);
@@ -1425,6 +1445,11 @@ PopupWindow {
                         && event.key >= Qt.Key_1 && event.key <= Qt.Key_6) {
                         root.launchTopApplication(event.key - Qt.Key_1);
                         event.accepted = true;
+                    } else if ((event.modifiers & Qt.ShiftModifier)
+                        && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                        && root.selectedDirectory) {
+                        root.openDirectory(root.selectedDirectory, "thunar");
+                        event.accepted = true;
                     } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                         if (root.wallpaperMode && wallpaperSelectorLoader.item)
                             wallpaperSelectorLoader.item.applySelected();
@@ -1433,7 +1458,7 @@ PopupWindow {
                         else
                             root.launchApplication(root.allApplications[root.selectedIndex]);
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Down) {
+                    } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Tab) {
                         if (root.wallpaperMode && wallpaperSelectorLoader.item)
                             wallpaperSelectorLoader.item.moveSelection(wallpaperSelectorLoader.item.columns);
                         else {
@@ -1443,7 +1468,7 @@ PopupWindow {
                             root.moveSelection(step);
                         }
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Up) {
+                    } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Backtab) {
                         if (root.wallpaperMode && wallpaperSelectorLoader.item)
                             wallpaperSelectorLoader.item.moveSelection(-wallpaperSelectorLoader.item.columns);
                         else {
@@ -1619,7 +1644,7 @@ PopupWindow {
 
                         Repeater {
                             model: [
-                                { key: "↑ ↓ ← →", action: "Navigate" },
+                                { key: "↑ ↓ ← → Tab", action: "Navigate" },
                                 { key: "Enter", action: "Launch" },
                                 { key: "Ctrl 1–6", action: "Quick pick" },
                                 { key: "Ctrl D", action: "Favorite" },
@@ -2032,7 +2057,9 @@ PopupWindow {
                         anchors.left: resultIcon.right
                         anchors.leftMargin: 14
                         anchors.right: parent.right
-                        anchors.rightMargin: resultRow.modelData.type === "app" ? 48 : 14
+                        anchors.rightMargin: resultRow.modelData.type === "app"
+                            ? 48
+                            : (directoryOpeners.visible ? directoryOpeners.width + 28 : 14)
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
 
@@ -2052,6 +2079,66 @@ PopupWindow {
                             font.pixelSize: 12
                             font.weight: Font.Normal
                             elide: Text.ElideRight
+                        }
+                    }
+
+                    // Folder rows show both ways to open them while selected.
+                    Row {
+                        id: directoryOpeners
+                        z: 11
+                        anchors.right: parent.right
+                        anchors.rightMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: resultRow.isSelected && resultRow.modelData.type === "directory"
+                        spacing: 6
+
+                        Repeater {
+                            model: [
+                                { label: "Code", hint: "Enter", command: "code" },
+                                { label: "Thunar", hint: "Shift Enter", command: "thunar" }
+                            ]
+
+                            delegate: Rectangle {
+                                id: openerChip
+                                required property var modelData
+                                width: openerContent.implicitWidth + 20
+                                height: 30
+                                radius: height / 2
+                                color: openerMouse.containsMouse ? Theme.hover : Theme.raised
+
+                                Behavior on color {
+                                    ColorAnimation { duration: Theme.fast }
+                                }
+
+                                Row {
+                                    id: openerContent
+                                    anchors.centerIn: parent
+                                    spacing: 6
+
+                                    UiText {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: openerChip.modelData.label
+                                        font.pixelSize: 12
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    UiText {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: openerChip.modelData.hint
+                                        color: Theme.muted
+                                        font.pixelSize: 10
+                                        font.weight: Font.DemiBold
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: openerMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.openDirectory(resultRow.modelData, openerChip.modelData.command)
+                                }
+                            }
                         }
                     }
 

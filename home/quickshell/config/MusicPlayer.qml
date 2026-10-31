@@ -32,7 +32,7 @@ Item {
         && root.spotifastPlayer.isPlaying
 
     height: Theme.tabHeight
-    visible: root.trackAvailable && width >= 130
+    visible: width >= 130
 
     readonly property int panelWidth: 376 + Theme.popupPadX * 2
     readonly property int panelLeft: {
@@ -50,8 +50,6 @@ Item {
     }
 
     function openPanel() {
-        if (!root.trackAvailable)
-            return;
         root.closeOtherPanelsRequested();
         playerPanel.visible = true;
     }
@@ -97,6 +95,13 @@ Item {
             nextFallback.running = true;
     }
 
+    function openApp() {
+        Quickshell.execDetached({
+            command: root.spotifastPlayer ? ["spotifast", "show"] : ["spotifast"]
+        });
+        root.closePanel();
+    }
+
     function refreshVolume() {
         if (!readNowPlaying.running)
             readNowPlaying.running = true;
@@ -119,9 +124,10 @@ Item {
             setVolumeProcess.running = true;
     }
 
+    // Leave the idle disc upright instead of wherever the last track stopped it.
     onTrackAvailableChanged: {
         if (!root.trackAvailable)
-            root.closePanel();
+            barCover.rotation = 0;
     }
 
     Process {
@@ -222,7 +228,7 @@ Item {
                 UiText {
                     id: musicTitleLabel
                     width: parent.width
-                    text: root.spotifastPlayer ? root.spotifastPlayer.trackTitle : ""
+                    text: root.trackAvailable ? root.spotifastPlayer.trackTitle : "Spotifast"
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
@@ -232,46 +238,13 @@ Item {
                 UiText {
                     id: musicArtistLabel
                     width: parent.width
-                    text: root.spotifastPlayer ? root.spotifastPlayer.trackArtist : ""
+                    text: root.trackAvailable
+                        ? root.spotifastPlayer.trackArtist
+                        : (root.spotifastPlayer ? "Nothing playing" : "Closed")
                     color: Theme.subtle
                     font.pixelSize: 10
                     elide: Text.ElideRight
                     maximumLineCount: 1
-                }
-            }
-
-            Item {
-                id: equalizer
-                anchors.verticalCenter: parent.verticalCenter
-                width: 14
-                height: 16
-
-                Repeater {
-                    model: [
-                        { x: 0, rest: 4, peak: 12, up: 260, down: 330 },
-                        { x: 5, rest: 7, peak: 15, up: 340, down: 250 },
-                        { x: 10, rest: 5, peak: 10, up: 220, down: 310 }
-                    ]
-
-                    delegate: Rectangle {
-                        id: equalizerBar
-                        required property var modelData
-                        property real heightLevel: modelData.rest
-
-                        anchors.bottom: parent.bottom
-                        x: modelData.x
-                        width: 3
-                        radius: 1.5
-                        height: root.isPlaying ? heightLevel : 3
-                        color: Theme.love
-
-                        SequentialAnimation {
-                            running: root.isPlaying
-                            loops: Animation.Infinite
-                            NumberAnimation { target: equalizerBar; property: "heightLevel"; to: equalizerBar.modelData.peak; duration: equalizerBar.modelData.up; easing.type: Easing.InOutSine }
-                            NumberAnimation { target: equalizerBar; property: "heightLevel"; to: equalizerBar.modelData.rest; duration: equalizerBar.modelData.down; easing.type: Easing.InOutSine }
-                        }
-                    }
                 }
             }
         }
@@ -308,6 +281,38 @@ Item {
             context: Qt.WindowShortcut
             enabled: playerPanel.visible
             onActivated: root.closePanel()
+        }
+
+        Shortcut {
+            sequence: "Space"
+            context: Qt.WindowShortcut
+            enabled: playerPanel.visible && root.trackAvailable
+            autoRepeat: false
+            onActivated: root.runPlayPause()
+        }
+
+        Shortcut {
+            sequence: "Right"
+            context: Qt.WindowShortcut
+            enabled: playerPanel.visible && root.trackAvailable
+            autoRepeat: false
+            onActivated: root.runNext()
+        }
+
+        Shortcut {
+            sequence: "Left"
+            context: Qt.WindowShortcut
+            enabled: playerPanel.visible && root.trackAvailable
+            autoRepeat: false
+            onActivated: root.runPrevious()
+        }
+
+        Shortcut {
+            sequences: ["Return", "Enter"]
+            context: Qt.WindowShortcut
+            enabled: playerPanel.visible && !root.trackAvailable
+            autoRepeat: false
+            onActivated: root.openApp()
         }
 
         PanelSurface {
@@ -354,10 +359,73 @@ Item {
                 }
             }
 
+            // Shown instead of the controls while there is no track to control.
+            Column {
+                anchors.centerIn: parent
+                width: parent.width - 48
+                spacing: 6
+                visible: !root.trackAvailable
+
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 84
+                    height: 84
+                    radius: 42
+                    color: Theme.raised
+                    border.width: 1
+                    border.color: Theme.stroke
+
+                    Icon {
+                        anchors.centerIn: parent
+                        text: Theme.icons.musicNote
+                        color: Theme.muted
+                        font.pixelSize: 36
+                    }
+                }
+
+                Item {
+                    width: 1
+                    height: 4
+                }
+
+                UiText {
+                    width: parent.width
+                    text: root.spotifastPlayer ? "Nothing playing" : "Spotifast is closed"
+                    font.family: Theme.displayFont
+                    font.pixelSize: 18
+                    font.weight: Font.Bold
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                UiText {
+                    width: parent.width
+                    text: root.spotifastPlayer ? "Pick something to listen to" : "Open it to start listening"
+                    color: Theme.subtle
+                    font.pixelSize: 12
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                Item {
+                    width: 1
+                    height: 6
+                }
+
+                SoftButton {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    implicitHeight: 36
+                    variant: "accent"
+                    accent: Theme.love
+                    glyph: Theme.icons.music
+                    label: "Open Spotifast"
+                    onClicked: root.openApp()
+                }
+            }
+
             Column {
                 anchors.fill: parent
                 anchors.margins: 16
                 spacing: 12
+                visible: root.trackAvailable
 
                 Row {
                     width: parent.width
@@ -369,36 +437,77 @@ Item {
                         width: 112
                         height: 112
 
-                        RectangularShadow {
-                            anchors.fill: parent
-                            radius: 20
-                            blur: 18
-                            offset.y: 6
-                            color: Qt.rgba(0, 0, 0, 0.5)
+                        // Rings ripple out from the disc while the track plays.
+                        Repeater {
+                            model: 2
+
+                            delegate: Rectangle {
+                                id: pulseRing
+                                required property int index
+                                readonly property int delay: index * 900
+
+                                anchors.fill: parent
+                                radius: width / 2
+                                color: "transparent"
+                                border.width: 1.5
+                                border.color: Theme.love
+                                opacity: 0
+                                visible: root.isPlaying
+
+                                SequentialAnimation {
+                                    running: root.isPlaying && playerPanel.visible
+                                    loops: Animation.Infinite
+                                    PauseAnimation { duration: pulseRing.delay }
+                                    ParallelAnimation {
+                                        NumberAnimation { target: pulseRing; property: "scale"; from: 1; to: 1.22; duration: 2000; easing.type: Easing.OutCubic }
+                                        NumberAnimation { target: pulseRing; property: "opacity"; from: 0.5; to: 0; duration: 2000; easing.type: Easing.OutCubic }
+                                    }
+                                    PauseAnimation { duration: 900 - pulseRing.delay }
+                                }
+                            }
                         }
 
-                        ClippingRectangle {
+                        Item {
                             anchors.fill: parent
-                            radius: 20
-                            color: Theme.raised
+                            scale: root.isPlaying ? 1 : 0.94
 
-                            Image {
-                                id: artworkImage
-                                anchors.fill: parent
-                                source: root.spotifastPlayer ? root.spotifastPlayer.trackArtUrl : ""
-                                asynchronous: true
-                                cache: true
-                                fillMode: Image.PreserveAspectCrop
-                                smooth: true
-                                visible: status === Image.Ready
+                            Behavior on scale {
+                                NumberAnimation { duration: Theme.normal; easing.type: Easing.OutCubic }
                             }
 
-                            Icon {
-                                anchors.centerIn: parent
-                                text: Theme.icons.musicNote
-                                color: Theme.love
-                                font.pixelSize: 36
-                                visible: artworkImage.status !== Image.Ready
+                            RectangularShadow {
+                                anchors.fill: parent
+                                radius: width / 2
+                                blur: 18
+                                offset.y: 6
+                                color: Qt.rgba(0, 0, 0, 0.5)
+                            }
+
+                            // Same disc as the bar, turning in step with it.
+                            ClippingRectangle {
+                                anchors.fill: parent
+                                radius: width / 2
+                                color: Theme.raised
+                                rotation: barCover.rotation
+
+                                Image {
+                                    id: artworkImage
+                                    anchors.fill: parent
+                                    source: root.spotifastPlayer ? root.spotifastPlayer.trackArtUrl : ""
+                                    asynchronous: true
+                                    cache: true
+                                    fillMode: Image.PreserveAspectCrop
+                                    smooth: true
+                                    visible: status === Image.Ready
+                                }
+
+                                Icon {
+                                    anchors.centerIn: parent
+                                    text: Theme.icons.musicNote
+                                    color: Theme.love
+                                    font.pixelSize: 36
+                                    visible: artworkImage.status !== Image.Ready
+                                }
                             }
                         }
                     }
@@ -408,11 +517,51 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 3
 
-                        UiText {
-                            text: root.spotifastPlayer && root.spotifastPlayer.isPlaying ? "Now playing" : "Paused"
-                            color: Theme.love
-                            font.pixelSize: 11
-                            font.weight: Font.Bold
+                        Row {
+                            spacing: 8
+
+                            UiText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.isPlaying ? "Now playing" : "Paused"
+                                color: Theme.love
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                            }
+
+                            Item {
+                                id: equalizer
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 14
+                                height: 14
+
+                                Repeater {
+                                    model: [
+                                        { x: 0, rest: 4, peak: 11, up: 260, down: 330 },
+                                        { x: 5, rest: 6, peak: 14, up: 340, down: 250 },
+                                        { x: 10, rest: 5, peak: 10, up: 220, down: 310 }
+                                    ]
+
+                                    delegate: Rectangle {
+                                        id: equalizerBar
+                                        required property var modelData
+                                        property real heightLevel: modelData.rest
+
+                                        anchors.bottom: parent.bottom
+                                        x: modelData.x
+                                        width: 3
+                                        radius: 1.5
+                                        height: root.isPlaying ? heightLevel : 3
+                                        color: Theme.love
+
+                                        SequentialAnimation {
+                                            running: root.isPlaying && playerPanel.visible
+                                            loops: Animation.Infinite
+                                            NumberAnimation { target: equalizerBar; property: "heightLevel"; to: equalizerBar.modelData.peak; duration: equalizerBar.modelData.up; easing.type: Easing.InOutSine }
+                                            NumberAnimation { target: equalizerBar; property: "heightLevel"; to: equalizerBar.modelData.rest; duration: equalizerBar.modelData.down; easing.type: Easing.InOutSine }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         UiText {
